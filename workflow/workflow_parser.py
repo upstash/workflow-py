@@ -11,7 +11,7 @@ from workflow.error import QStashWorkflowError
 
 async def get_payload(request):
     try:
-        return await request.text()
+        return json.dumps(await request.json())
     except Exception:
         return None
 
@@ -21,7 +21,7 @@ async def parse_payload(raw_payload):
 
     encoded_initial_payload, *encoded_steps = raw_steps
 
-    raw_initial_payload = await decode_base64(encoded_initial_payload.body)
+    raw_initial_payload = decode_base64(encoded_initial_payload["body"])
 
     initial_step = {
         "step_id": 0,
@@ -78,14 +78,17 @@ def validate_request(request):
     if not workflow_run_id:
         raise QStashWorkflowError("Couldn't get workflow id from header")
 
-    return {is_first_invocation: is_first_invocation, workflow_run_id: workflow_run_id}
+    return {
+        "is_first_invocation": is_first_invocation,
+        "workflow_run_id": workflow_run_id,
+    }
 
 
 async def parse_request(request_payload, is_first_invocation):
     if is_first_invocation:
         return {
-            raw_initial_payload: request_payload or "",
-            steps: [],
+            "raw_initial_payload": request_payload or "",
+            "steps": [],
         }
     else:
         if not request_payload:
@@ -96,6 +99,6 @@ async def parse_request(request_payload, is_first_invocation):
         steps = parsed_data["steps"]
 
         return {
-            raw_initial_payload: raw_initial_payload,
-            steps: steps,
+            "raw_initial_payload": raw_initial_payload,
+            "steps": steps,
         }

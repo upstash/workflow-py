@@ -66,7 +66,7 @@ async def determine_urls(
     url,
     base_url,
 ):
-    initial_workflow_url = url if url is not None else request.url
+    initial_workflow_url = str(url if url is not None else request.url)
 
     if base_url:
 
@@ -81,5 +81,5 @@ async def determine_urls(
         workflow_url = initial_workflow_url
 
     return {
-        workflow_url: workflow_url,
+        "workflow_url": workflow_url,
     }

@@ -8,7 +8,9 @@ class AutoExecutor:
     def __init__(self, context, steps):
         self.context = context
         self.steps = steps
-        self.non_plan_step_count = len([step for step in steps if not step.target_step])
+        self.non_plan_step_count = len(
+            [step for step in steps if not step.get("target_step", None)]
+        )
         self.step_count = 0
         self.plan_step_count = 0
         self.executing_step = False
@@ -17,9 +19,12 @@ class AutoExecutor:
         return await self.run_single(step_info)
 
     async def run_single(self, lazy_step):
+        print("Running single")
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
+            print("Step count is less than non plan step count")
             validate_step(lazy_step, step)
+            print("Validated step")
             return step.out
 
         result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
@@ -64,14 +69,14 @@ class AutoExecutor:
 
 
 def validate_step(lazy_step, step_from_request):
-    if lazy_step.step_name != step_from_request.step_name:
+    if lazy_step.step_name != step_from_request["step_name"]:
         raise QStashWorkflowError(
             f"Incompatible step name. Expected '{lazy_step.step_name}', "
-            f"got '{step_from_request.step_name}' from the request"
+            f"got '{step_from_request["step_name"]}' from the request"
         )
 
-    if lazy_step.step_type != step_from_request.step_type:
+    if lazy_step.step_type != step_from_request["step_type"]:
         raise QStashWorkflowError(
             f"Incompatible step type. Expected '{lazy_step.step_type}', "
-            f"got '{step_from_request.step_type}' from the request"
+            f"got '{step_from_request["step_type"]}' from the request"
         )

@@ -23,26 +23,26 @@ class LazyFunctionStep(BaseLazyStep):
         self.step_type = "Run"
 
     def get_plan_step(self, concurrent, target_step):
-        return dict(
-            stepId=0,
-            stepName=self.step_name,
-            stepType=self.step_type,
-            concurrent=concurrent,
-            targetStep=target_step,
-        )
+        return {
+            "stepId": 0,
+            "stepName": self.step_name,
+            "stepType": self.step_type,
+            "concurrent": concurrent,
+            "targetStep": target_step,
+        }
 
     async def get_result_step(self, concurrent, step_id):
         result = self.step_function()
         if asyncio.iscoroutine(result):
             result = await result
 
-        return dict(
-            stepId=step_id,
-            stepName=self.step_name,
-            stepType=self.step_type,
-            out=result,
-            concurrent=concurrent,
-        )
+        return {
+            "stepId": step_id,
+            "stepName": self.step_name,
+            "stepType": self.step_type,
+            "out": result,
+            "concurrent": concurrent,
+        }
 
 
 class LazySleepStep(BaseLazyStep):
@@ -52,20 +52,20 @@ class LazySleepStep(BaseLazyStep):
         self.step_type = "SleepFor"
 
     def get_plan_step(self, concurrent, target_step):
-        return dict(
-            stepId=0,
-            stepName=self.step_name,
-            stepType=self.step_type,
-            sleepFor=self.sleep,
-            concurrent=concurrent,
-            targetStep=target_step,
-        )
+        return {
+            "stepId": 0,
+            "stepName": self.step_name,
+            "stepType": self.step_type,
+            "sleepFor": self.sleep,
+            "concurrent": concurrent,
+            "targetStep": target_step,
+        }
 
     async def get_result_step(self, concurrent, step_id):
-        return dict(
-            stepId=step_id,
-            stepName=self.step_name,
-            stepType=self.step_type,
-            sleepFor=self.sleep,
-            concurrent=concurrent,
-        )
+        return {
+            "stepId": step_id,
+            "stepName": self.step_name,
+            "stepType": self.step_type,
+            "sleepFor": self.sleep,
+            "concurrent": concurrent,
+        }

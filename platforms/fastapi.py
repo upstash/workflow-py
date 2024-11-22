@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from workflow.serve.serve import serve
 
 
@@ -9,7 +9,11 @@ class Serve:
     def post(self, path):
         def decorator(route_function):
             handler = serve(route_function, {}).get("handler")
-            self.app.add_api_route(path, handler, methods=["POST"])
+
+            async def _handler_wrapper(request: Request):
+                return await handler(request)
+
+            self.app.add_api_route(path, _handler_wrapper, methods=["POST"])
             return route_function
 
         return decorator

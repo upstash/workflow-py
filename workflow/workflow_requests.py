@@ -1,3 +1,4 @@
+import requests
 from workflow.error import QStashWorkflowError, QStashWorkflowAbort
 from workflow.constants import (
     WORKFLOW_INIT_HEADER,
@@ -12,6 +13,7 @@ from workflow.constants import (
 async def trigger_first_invocation(
     workflow_context,
     retries,
+    env,
 ):
     headers = get_headers(
         "true",
@@ -22,22 +24,24 @@ async def trigger_first_invocation(
         retries,
     )["headers"]
 
-    await workflow_context.qstash_client.publish_json(
-        {
-            "headers": headers,
-            "method": "POST",
-            "body": workflow_context.request_payload,
-            "url": workflow_context.url,
-        }
+    requests.post(
+        f"https://qstash.upstash.io/v2/publish/{workflow_context.url}",
+        headers={
+            "Authorization": f"Bearer {env.get("QSTASH_TOKEN", "")}",
+            **headers,
+        },
+        json=workflow_context.request_payload,
     )
 
 
 async def trigger_route_function(on_step, on_cleanup):
+    print("Triggering route function")
     try:
         # When onStep completes successfully, it throws QStashWorkflowAbort
         # indicating that the step has been successfully executed.
         # This ensures that onCleanup is only called when no exception is thrown.
         await on_step()
+        print("Route function triggered")
         await on_cleanup()
     except Exception as error:
         if isinstance(error, QStashWorkflowAbort):
@@ -129,10 +133,10 @@ def get_headers(
                 "Upstash-Callback-Workflow-Url": workflow_url,
                 "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
                 "Upstash-Callback-Forward-Upstash-Workflow-StepId": str(step.step_id),
-                "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.step_name,
-                "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.step_type,
+                "Upstash-Callback-Forward-Upstash-Workflow-StepName": step["step_name"],
+                "Upstash-Callback-Forward-Upstash-Workflow-StepType": step["step_type"],
                 "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": str(
-                    step.concurrent
+                    step["concurrent"]
                 ).lower(),
                 "Upstash-Callback-Forward-Upstash-Workflow-ContentType": content_type,
                 "Upstash-Workflow-CallType": "toCallback",
