@@ -29,10 +29,7 @@ class WorkflowContext:
         )
         self.env = env or os.environ.copy()
         self.retries = retries or DEFAULT_RETRIES
-        print("Workflow context created")
-        print(self.steps)
         self.executor = AutoExecutor(self, self.steps)
-        print("Executor created")
 
     async def run(self, step_name, step_function):
         return await self._add_step(LazyFunctionStep(step_name, step_function))

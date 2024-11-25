@@ -25,25 +25,22 @@ def serve(route_function, options):
     url = processed_options.get("url")
 
     async def _handler(request):
-        workflow_url = (await determine_urls(request, url, base_url)).get("workflow_url")
+        workflow_url = (await determine_urls(request, url, base_url)).get(
+            "workflow_url"
+        )
 
         request_payload = await get_payload(request) or ""
         await verify_request(
             request_payload, request.headers.get("upstash-signature"), receiver
         )
-        print("Request verified")
-        print(request_payload)
 
         validate_request_response = validate_request(request)
         is_first_invocation = validate_request_response.get("is_first_invocation")
         workflow_run_id = validate_request_response.get("workflow_run_id")
-        print("Request validated")
 
         parse_request_response = await parse_request(
             request_payload, is_first_invocation
         )
-        print("Request parsed")
-        print(parse_request_response)
 
         raw_initial_payload = parse_request_response.get("raw_initial_payload")
         steps = parse_request_response.get("steps")
@@ -59,7 +56,6 @@ def serve(route_function, options):
             env=env,
             retries=retries,
         )
-        print("Workflow context created")
 
         if is_first_invocation:
             await trigger_first_invocation(workflow_context, retries, env)

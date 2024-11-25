@@ -31,23 +31,23 @@ async def parse_payload(raw_payload):
         "concurrent": NO_CONCURRENCY,
     }
 
-    steps_to_decode = [step for step in encoded_steps if step.call_type == "step"]
+    steps_to_decode = [step for step in encoded_steps if step["callType"] == "step"]
 
     other_steps = []
     for raw_step in steps_to_decode:
-        step = json.loads(await decode_base64(raw_step.body))
+        step = json.loads(decode_base64(raw_step["body"]))
 
         try:
-            step.out = json.loads(step.out)
+            step["out"] = json.loads(step["out"])
         except json.JSONDecodeError:
             pass
 
-        if step.wait_event_id:
+        if step.get("waitEventId", None):
             new_out = {
-                "event_data": await decode_base64(step.out) if step.out else None,
+                "event_data": decode_base64(step["out"]) if step["out"] else None,
                 "timeout": step.wait_timeout or False,
             }
-            step.out = new_out
+            step["out"] = new_out
 
         other_steps.append(step)
 

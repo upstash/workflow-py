@@ -1,4 +1,5 @@
 import json
+import requests
 from workflow.constants import NO_CONCURRENCY
 from workflow.error import QStashWorkflowError, QStashWorkflowAbort
 from workflow.workflow_requests import get_headers
@@ -16,20 +17,18 @@ class AutoExecutor:
         self.executing_step = False
 
     async def add_step(self, step_info):
+        self.step_count += 1
         return await self.run_single(step_info)
 
     async def run_single(self, lazy_step):
-        print("Running single")
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
-            print("Step count is less than non plan step count")
             validate_step(lazy_step, step)
-            print("Validated step")
-            return step.out
+            return step["out"]
 
         result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
         await self.submit_steps_to_qstash([result_step])
-        return result_step.out
+        return result_step["out"]
 
     async def submit_steps_to_qstash(self, steps):
         if not steps:
@@ -37,7 +36,7 @@ class AutoExecutor:
                 f"Unable to submit steps to QStash. Provided list is empty. Current step: {self.step_count}"
             )
 
-        requests = []
+        batch_requests = []
         for single_step in steps:
             headers = get_headers(
                 "false",
@@ -49,34 +48,43 @@ class AutoExecutor:
             )
 
             will_wait = (
-                single_step.concurrent == NO_CONCURRENCY or single_step.step_id == 0
+                single_step["concurrent"] == NO_CONCURRENCY
+                or single_step["stepId"] == 0
             )
-            single_step.out = json.dumps(single_step.out)
 
-            requests.append(
+            single_step["out"] = json.dumps(single_step.get("out", None))
+
+            batch_requests.append(
                 {
                     "headers": headers["headers"],
                     "method": "POST",
-                    "body": single_step,
-                    "url": self.context.url,
-                    "not_before": single_step.sleep_until if will_wait else None,
-                    "delay": single_step.sleep_for if will_wait else None,
+                    "body": json.dumps(single_step),
+                    "destination": self.context.url,
+                    "notBefore": (
+                        single_step.get("sleep_until", None) if will_wait else None
+                    ),
+                    "delay": single_step.get("sleep_for", None) if will_wait else None,
                 }
             )
-
-        await self.context.qstash_client.batch_json(requests)
-        raise QStashWorkflowAbort(steps[0].step_name, steps[0])
+        response = requests.post(
+            f"https://qstash.upstash.io/v2/batch",
+            headers={
+                "Authorization": f"Bearer {self.context.env.get('QSTASH_TOKEN', '')}"
+            },
+            json=batch_requests,
+        )
+        raise QStashWorkflowAbort(steps[0]["stepName"], steps[0])
 
 
 def validate_step(lazy_step, step_from_request):
-    if lazy_step.step_name != step_from_request["step_name"]:
+    if lazy_step.step_name != step_from_request["stepName"]:
         raise QStashWorkflowError(
             f"Incompatible step name. Expected '{lazy_step.step_name}', "
-            f"got '{step_from_request["step_name"]}' from the request"
+            f"got '{step_from_request["stepName"]}' from the request"
         )
 
-    if lazy_step.step_type != step_from_request["step_type"]:
+    if lazy_step.step_type != step_from_request["stepType"]:
         raise QStashWorkflowError(
             f"Incompatible step type. Expected '{lazy_step.step_type}', "
-            f"got '{step_from_request["step_type"]}' from the request"
+            f"got '{step_from_request["stepType"]}' from the request"
         )

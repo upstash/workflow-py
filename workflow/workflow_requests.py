@@ -35,13 +35,11 @@ async def trigger_first_invocation(
 
 
 async def trigger_route_function(on_step, on_cleanup):
-    print("Triggering route function")
     try:
         # When onStep completes successfully, it throws QStashWorkflowAbort
         # indicating that the step has been successfully executed.
         # This ensures that onCleanup is only called when no exception is thrown.
         await on_step()
-        print("Route function triggered")
         await on_cleanup()
     except Exception as error:
         if isinstance(error, QStashWorkflowAbort):
@@ -51,17 +49,13 @@ async def trigger_route_function(on_step, on_cleanup):
 
 async def trigger_workflow_delete(
     workflow_context,
-    cancel,
+    cancel=False,
 ):
-    await workflow_context.qstash_client.http.request(
-        path=[
-            "v2",
-            "workflows",
-            "runs",
-            f"{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
-        ],
-        method="DELETE",
-        parse_response_as_json=False,
+    requests.delete(
+        f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
+        headers={
+            "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN', '')}"
+        },
     )
 
 
@@ -105,43 +99,11 @@ def get_headers(
         base_headers["Upstash-Retries"] = str(retries)
 
     if user_headers:
-        for header in user_headers.keys():
-            header_value = user_headers.get(header)
-            if header_value is not None:
-                if step and step.call_headers:
-                    base_headers[f"Upstash-Callback-Forward-{header}"] = header_value
-                else:
-                    base_headers[f"Upstash-Forward-{header}"] = header_value
+        for header, value in user_headers.items():
+            base_headers[f"Upstash-Forward-{header}"] = value
 
     content_type = user_headers.get("Content-Type") if user_headers else None
     content_type = content_type or DEFAULT_CONTENT_TYPE
-
-    if step and step.call_headers:
-        forwarded_headers = {
-            f"Upstash-Forward-{header}": value
-            for header, value in step.call_headers.items()
-        }
-
-        return {
-            "headers": {
-                **base_headers,
-                **forwarded_headers,
-                "Upstash-Callback": workflow_url,
-                "Upstash-Callback-Workflow-RunId": workflow_run_id,
-                "Upstash-Callback-Workflow-CallType": "fromCallback",
-                "Upstash-Callback-Workflow-Init": "false",
-                "Upstash-Callback-Workflow-Url": workflow_url,
-                "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
-                "Upstash-Callback-Forward-Upstash-Workflow-StepId": str(step.step_id),
-                "Upstash-Callback-Forward-Upstash-Workflow-StepName": step["step_name"],
-                "Upstash-Callback-Forward-Upstash-Workflow-StepType": step["step_type"],
-                "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": str(
-                    step["concurrent"]
-                ).lower(),
-                "Upstash-Callback-Forward-Upstash-Workflow-ContentType": content_type,
-                "Upstash-Workflow-CallType": "toCallback",
-            }
-        }
 
     return {"headers": base_headers}
 
