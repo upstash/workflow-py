@@ -1,8 +1,8 @@
 import json
 import requests
-from workflow.constants import NO_CONCURRENCY
-from workflow.error import QStashWorkflowError, QStashWorkflowAbort
-from workflow.workflow_requests import get_headers
+from upstash_workflow.constants import NO_CONCURRENCY
+from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
+from upstash_workflow.workflow_requests import get_headers
 
 
 class AutoExecutor:

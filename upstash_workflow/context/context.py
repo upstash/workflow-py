@@ -1,8 +1,8 @@
 import json
 import os
-from workflow.constants import DEFAULT_RETRIES
-from workflow.context.auto_executor import AutoExecutor
-from workflow.context.steps import LazyFunctionStep, LazySleepStep
+from upstash_workflow.constants import DEFAULT_RETRIES
+from upstash_workflow.context.auto_executor import AutoExecutor
+from upstash_workflow.context.steps import LazyFunctionStep, LazySleepStep
 
 
 class WorkflowContext:

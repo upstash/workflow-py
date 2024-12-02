@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from workflow.serve.serve import serve
+from upstash_workflow.serve.serve import serve
 
 
 class Serve:

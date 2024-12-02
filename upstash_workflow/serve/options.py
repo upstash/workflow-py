@@ -2,8 +2,8 @@ import os
 import json
 import re
 from qstash import QStash, Receiver
-from workflow.workflow_types import Response
-from workflow.constants import DEFAULT_RETRIES
+from upstash_workflow.workflow_types import Response
+from upstash_workflow.constants import DEFAULT_RETRIES
 
 
 def process_options(options):

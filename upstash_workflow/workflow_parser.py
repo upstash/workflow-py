@@ -1,12 +1,12 @@
 import json
-from workflow.utils import nanoid, decode_base64
-from workflow.constants import (
+from upstash_workflow.utils import nanoid, decode_base64
+from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
     WORKFLOW_PROTOCOL_VERSION_HEADER,
     WORKFLOW_ID_HEADER,
     NO_CONCURRENCY,
 )
-from workflow.error import QStashWorkflowError
+from upstash_workflow.error import QStashWorkflowError
 
 
 async def get_payload(request):

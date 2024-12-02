@@ -1,16 +1,16 @@
 import json
-from workflow.workflow_types import Response
-from workflow.workflow_parser import get_payload, validate_request, parse_request
-from workflow.workflow_requests import (
+from upstash_workflow.workflow_types import Response
+from upstash_workflow.workflow_parser import get_payload, validate_request, parse_request
+from upstash_workflow.workflow_requests import (
     verify_request,
     recreate_user_headers,
     trigger_first_invocation,
     trigger_route_function,
     trigger_workflow_delete,
 )
-from workflow.serve.options import process_options, determine_urls
-from workflow.error import format_workflow_error
-from workflow.context.context import WorkflowContext
+from upstash_workflow.serve.options import process_options, determine_urls
+from upstash_workflow.error import format_workflow_error
+from upstash_workflow.context.context import WorkflowContext
 
 
 def serve(route_function, options):

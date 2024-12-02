@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from platforms.fastapi import Serve
+from upstash_workflow.fastapi import Serve
 
 app = FastAPI()
 serve = Serve(app)

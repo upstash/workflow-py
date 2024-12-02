@@ -1,6 +1,6 @@
 import requests
-from workflow.error import QStashWorkflowError, QStashWorkflowAbort
-from workflow.constants import (
+from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
+from upstash_workflow.constants import (
     WORKFLOW_INIT_HEADER,
     WORKFLOW_ID_HEADER,
     WORKFLOW_URL_HEADER,
