@@ -6,10 +6,7 @@ NANOID_LENGTH = 21
 
 
 def nanoid() -> str:
-    random_indices = [
-        secrets.randbelow(len(NANOID_CHARS)) for _ in range(NANOID_LENGTH)
-    ]
-    return "".join(NANOID_CHARS[i] for i in random_indices)
+    return "".join([secrets.choice(NANOID_CHARS) for _ in range(NANOID_LENGTH)])
 
 
 def decode_base64(base64_str: str) -> str:

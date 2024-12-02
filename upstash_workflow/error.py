@@ -13,8 +13,8 @@ class QStashWorkflowAbort(Exception):
 
         message = (
             "This is an Upstash Workflow error thrown after a step executes. It is expected to be raised."
-            " Make sure that you await for each step. Also, if you are using try/catch blocks, you should not wrap"
-            " context.run/sleep/sleepUntil/call methods with try/catch."
+            " Make sure that you await for each step. Also, if you are using try/except blocks, you should not wrap"
+            " context.run/sleep/sleep_until/call methods with try/except."
             f" Aborting workflow after executing step '{step_name}'."
         )
 
