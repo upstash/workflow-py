@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "upstash-workflow"
+version = "0.0.1"
+description = "Python SDK for Upstash Workflow"
+license = "MIT"
+authors = ["Upstash <support@upstash.com>"]
+maintainers = ["Upstash <support@upstash.com>"]
+readme = "README.md"
+repository = "https://github.com/upstash/workflow-py"
+keywords = ["Workflow", "Upstash Workflow", "Durable Serverless Functions"]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Database",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: Software Development :: Libraries",
+]
+
+packages = [{ include = "upstash_workflow" }]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.32.3"
+qstash = "^2.0.0"
+
+[tool.poetry.group.fastapi.dependencies]
+fastapi = "^0.115.0"
+uvicorn = "^0.30.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
