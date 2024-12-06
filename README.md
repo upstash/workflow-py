@@ -25,3 +25,11 @@ Run FastAPI
 cd examples/fastapi
 uvicorn main:app --reload
 ```
+
+### Development
+
+1. Clone the repository
+2. Install [Poetry](https://python-poetry.org/docs/#installation)
+3. Install dependencies with `poetry install`
+4. Create a .env file with `cp .env.example .env` and fill in the environment variables
+5. Format with `poetry run ruff format .`
