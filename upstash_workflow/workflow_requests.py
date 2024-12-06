@@ -1,4 +1,4 @@
-import requests
+import httpx
 from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
 from upstash_workflow.constants import (
     WORKFLOW_INIT_HEADER,
@@ -24,13 +24,10 @@ async def trigger_first_invocation(
         retries,
     )["headers"]
 
-    requests.post(
-        f"https://qstash.upstash.io/v2/publish/{workflow_context.url}",
-        headers={
-            "Authorization": f"Bearer {env.get("QSTASH_TOKEN", "")}",
-            **headers,
-        },
-        json=workflow_context.request_payload,
+    workflow_context.qstash_client.message.publish_json(
+        url=workflow_context.url,
+        body=workflow_context.request_payload,
+        headers=headers,
     )
 
 
@@ -51,7 +48,7 @@ async def trigger_workflow_delete(
     workflow_context,
     cancel=False,
 ):
-    requests.delete(
+    httpx.delete(
         f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
         headers={
             "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN', '')}"

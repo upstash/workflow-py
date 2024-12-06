@@ -1,5 +1,4 @@
 import json
-import requests
 from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
 from upstash_workflow.workflow_requests import get_headers
@@ -58,21 +57,16 @@ class AutoExecutor:
                 {
                     "headers": headers["headers"],
                     "method": "POST",
-                    "body": json.dumps(single_step),
-                    "destination": self.context.url,
+                    "body": single_step,
+                    "url": self.context.url,
                     "notBefore": (
                         single_step.get("sleep_until", None) if will_wait else None
                     ),
                     "delay": single_step.get("sleep_for", None) if will_wait else None,
                 }
             )
-        response = requests.post(
-            f"https://qstash.upstash.io/v2/batch",
-            headers={
-                "Authorization": f"Bearer {self.context.env.get('QSTASH_TOKEN', '')}"
-            },
-            json=batch_requests,
-        )
+
+        response = self.context.qstash_client.message.batch_json(batch_requests)
         raise QStashWorkflowAbort(steps[0]["stepName"], steps[0])
 
 
