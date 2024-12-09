@@ -1,4 +1,7 @@
 import httpx
+import json
+import base64
+import logging
 from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
 from upstash_workflow.constants import (
     WORKFLOW_INIT_HEADER,
@@ -8,6 +11,9 @@ from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION_HEADER,
     DEFAULT_CONTENT_TYPE,
 )
+from upstash_workflow.types import StepTypes
+
+_logger = logging.getLogger(__name__)
 
 
 async def trigger_first_invocation(
@@ -73,6 +79,103 @@ def recreate_user_headers(headers: dict) -> dict:
             filtered_headers[header] = value
 
     return filtered_headers
+
+
+async def handle_third_party_call_result(
+    request, request_payload, client, workflow_url, retries
+):
+    try:
+        if request.headers.get("Upstash-Workflow-Callback"):
+            if request_payload:
+                callback_payload = request_payload
+            else:
+                raise NotImplementedError
+
+            callback_message = json.loads(callback_payload)
+
+            if (
+                not (200 <= callback_message["status"] < 300)
+                and callback_message.get("maxRetries")
+                and callback_message.get("retried") != callback_message["maxRetries"]
+            ):
+
+                _logger.warning(
+                    f'Workflow Warning: "context.call" failed with status {callback_message["status"]} '
+                    f'and will retry (retried {callback_message.get("retried", 0)} out of '
+                    f'{callback_message["maxRetries"]} times). '
+                    f'Error Message:\n{base64.b64decode(callback_message.get("body", "")).decode()}'
+                )
+
+                return "call-will-retry"
+
+            headers = request.headers
+            workflow_run_id = headers.get("X-Upstash-Workflow-Id")
+            step_id_str = headers.get("Upstash-Workflow-StepId")
+            step_name = headers.get("Upstash-Workflow-StepName")
+            step_type = headers.get("Upstash-Workflow-StepType")
+            concurrent_str = headers.get("Upstash-Workflow-Concurrent")
+            content_type = headers.get("Upstash-Workflow-ContentType")
+
+            if not all(
+                [
+                    workflow_run_id,
+                    step_id_str,
+                    step_name,
+                    step_type in StepTypes,
+                    concurrent_str,
+                    content_type,
+                ]
+            ):
+                raise ValueError(
+                    f"Missing info in callback message source header: {json.dumps({
+                        'workflow_run_id': workflow_run_id,
+                        'step_id_str': step_id_str,
+                        'step_name': step_name,
+                        'step_type': step_type,
+                        'concurrent_str': concurrent_str,
+                        'content_type': content_type
+                    })}"
+                )
+
+            user_headers = recreate_user_headers(headers)
+            request_headers = get_headers(
+                "false",
+                workflow_run_id,
+                workflow_url,
+                user_headers,
+                None,
+                retries,
+            )["headers"]
+
+            call_response = {
+                "status": callback_message["status"],
+                "body": base64.b64decode(callback_message.get("body", "")).decode(),
+                "header": callback_message["header"],
+            }
+
+            call_result_step = {
+                "step_id": int(step_id_str),
+                "step_name": step_name,
+                "step_type": step_type,
+                "out": json.dumps(call_response),
+                "concurrent": int(concurrent_str),
+            }
+
+            result = await client.publish_json(
+                headers=request_headers,
+                body=call_result_step,
+                url=workflow_url,
+            )
+
+            return "is-call-return"
+
+        return "continue-workflow"
+
+    except Exception as error:
+        is_call_return = request.headers.get("Upstash-Workflow-Callback")
+        raise QStashWorkflowError(
+            f"Error when handling call return (isCallReturn={is_call_return}): {str(error)}"
+        )
 
 
 def get_headers(

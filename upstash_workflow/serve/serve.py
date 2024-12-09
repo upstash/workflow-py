@@ -12,6 +12,7 @@ from upstash_workflow.workflow_requests import (
     trigger_first_invocation,
     trigger_route_function,
     trigger_workflow_delete,
+    handle_third_party_call_result,
 )
 from upstash_workflow.serve.options import process_options, determine_urls
 from upstash_workflow.error import format_workflow_error
@@ -84,19 +85,30 @@ def serve(
             retries=retries,
         )
 
-        if is_first_invocation:
-            await trigger_first_invocation(workflow_context, retries, env)
-        else:
+        call_return_check = await handle_third_party_call_result(
+            request,
+            raw_initial_payload,
+            qstash_client,
+            workflow_url,
+            retries,
+        )
 
-            async def on_step():
-                return await route_function(workflow_context)
+        if call_return_check == "continue-workflow":
+            if is_first_invocation:
+                await trigger_first_invocation(workflow_context, retries, env)
+            else:
 
-            async def on_cleanup():
-                await trigger_workflow_delete(workflow_context)
+                async def on_step():
+                    return await route_function(workflow_context)
 
-            await trigger_route_function(on_step=on_step, on_cleanup=on_cleanup)
+                async def on_cleanup():
+                    await trigger_workflow_delete(workflow_context)
 
-        return on_step_finish(workflow_context.workflow_run_id, "success")
+                await trigger_route_function(on_step=on_step, on_cleanup=on_cleanup)
+
+            return on_step_finish(workflow_context.workflow_run_id, "success")
+
+        return on_step_finish("no-workflow-id", "fromCallback")
 
     async def _safe_handler(request):
         try:
