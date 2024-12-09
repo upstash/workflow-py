@@ -8,7 +8,7 @@ class Serve:
 
     def post(self, path):
         def decorator(route_function):
-            handler = serve(route_function, {}).get("handler")
+            handler = serve(route_function).get("handler")
 
             async def _handler_wrapper(request: Request):
                 return await handler(request)

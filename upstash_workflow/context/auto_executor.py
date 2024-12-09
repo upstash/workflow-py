@@ -66,7 +66,7 @@ class AutoExecutor:
                 }
             )
 
-        response = self.context.qstash_client.message.batch_json(batch_requests)
+        response = await self.context.qstash_client.message.batch_json(batch_requests)
         raise QStashWorkflowAbort(steps[0]["stepName"], steps[0])
 
 

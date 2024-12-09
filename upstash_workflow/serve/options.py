@@ -1,13 +1,23 @@
 import os
 import json
 import re
-from qstash import QStash, Receiver
+from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response
 from upstash_workflow.constants import DEFAULT_RETRIES
 
 
-def process_options(options):
-    environment = options.env if options and options.env is not None else os.environ
+def process_options(
+    *,
+    qstash_client=None,
+    on_step_finish=None,
+    initial_payload_parser=None,
+    receiver=None,
+    base_url=None,
+    env=None,
+    retries=DEFAULT_RETRIES,
+    url=None,
+):
+    environment = env if env is not None else os.environ
 
     receiver_environment_variables_set = bool(
         environment.get("QSTASH_CURRENT_SIGNING_KEY")
@@ -32,14 +42,15 @@ def process_options(options):
             # If not a JSON parsing error, re-raise
             raise error
 
-    # Create default options
-    default_options = {
-        "qstash_client": QStash(
+    return {
+        "qstash_client": qstash_client
+        or AsyncQStash(
             environment.get("QSTASH_TOKEN", ""),
         ),
-        "on_step_finish": _on_step_finish,
-        "initial_payload_parser": _initial_payload_parser,
-        "receiver": (
+        "on_step_finish": on_step_finish or _on_step_finish,
+        "initial_payload_parser": initial_payload_parser or _initial_payload_parser,
+        "receiver": receiver
+        or (
             Receiver(
                 current_signing_key=environment.get("QSTASH_CURRENT_SIGNING_KEY", ""),
                 next_signing_key=environment.get("QSTASH_NEXT_SIGNING_KEY", ""),
@@ -47,18 +58,10 @@ def process_options(options):
             if receiver_environment_variables_set
             else None
         ),
-        "base_url": environment.get("UPSTASH_WORKFLOW_URL"),
+        "base_url": base_url or environment.get("UPSTASH_WORKFLOW_URL"),
         "env": environment,
-        "retries": DEFAULT_RETRIES,
-        # **options,
+        "retries": retries or DEFAULT_RETRIES,
     }
-
-    # If options were provided, update defaults with provided values
-    if options:
-        for key, value in options.__dict__.items():
-            setattr(default_options, key, value)
-
-    return default_options
 
 
 async def determine_urls(

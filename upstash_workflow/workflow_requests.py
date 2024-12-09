@@ -24,7 +24,7 @@ async def trigger_first_invocation(
         retries,
     )["headers"]
 
-    workflow_context.qstash_client.message.publish_json(
+    await workflow_context.qstash_client.message.publish_json(
         url=workflow_context.url,
         body=workflow_context.request_payload,
         headers=headers,
@@ -48,12 +48,13 @@ async def trigger_workflow_delete(
     workflow_context,
     cancel=False,
 ):
-    httpx.delete(
-        f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
-        headers={
-            "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN', '')}"
-        },
-    )
+    async with httpx.AsyncClient() as client:
+        await client.delete(
+            f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
+            headers={
+                "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN', '')}"
+            },
+        )
 
 
 def recreate_user_headers(headers: dict) -> dict:

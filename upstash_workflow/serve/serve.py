@@ -1,4 +1,5 @@
 import json
+import logging
 from upstash_workflow.workflow_types import Response
 from upstash_workflow.workflow_parser import (
     get_payload,
@@ -16,9 +17,31 @@ from upstash_workflow.serve.options import process_options, determine_urls
 from upstash_workflow.error import format_workflow_error
 from upstash_workflow.context.context import WorkflowContext
 
+_logger = logging.getLogger(__name__)
 
-def serve(route_function, options):
-    processed_options = process_options(options)
+
+def serve(
+    route_function,
+    *,
+    qstash_client=None,
+    on_step_finish=None,
+    initial_payload_parser=None,
+    receiver=None,
+    base_url=None,
+    env=None,
+    retries=None,
+    url=None,
+):
+    processed_options = process_options(
+        qstash_client=qstash_client,
+        on_step_finish=on_step_finish,
+        initial_payload_parser=initial_payload_parser,
+        receiver=receiver,
+        base_url=base_url,
+        env=env,
+        retries=retries,
+        url=url,
+    )
     qstash_client = processed_options.get("qstash_client")
     on_step_finish = processed_options.get("on_step_finish")
     initial_payload_parser = processed_options.get("initial_payload_parser")
@@ -79,7 +102,7 @@ def serve(route_function, options):
         try:
             return await _handler(request)
         except Exception as error:
-            print(error)
+            _logger.error(error)
             return Response(json.dumps(format_workflow_error(error)), status=500)
 
     return {"handler": _safe_handler}
