@@ -56,6 +56,13 @@ class AutoExecutor:
             batch_requests.append(
                 {
                     "headers": headers["headers"],
+                    "method": single_step["callMethod"],
+                    "body": single_step["callBody"],
+                    "url": single_step["callUrl"],
+                }
+                if single_step.get("callUrl", None)
+                else {
+                    "headers": headers["headers"],
                     "method": "POST",
                     "body": single_step,
                     "url": self.context.url,
@@ -65,7 +72,6 @@ class AutoExecutor:
                     "delay": single_step.get("sleep_for", None) if will_wait else None,
                 }
             )
-
         response = await self.context.qstash_client.message.batch_json(batch_requests)
         raise QStashWorkflowAbort(steps[0]["stepName"], steps[0])
 

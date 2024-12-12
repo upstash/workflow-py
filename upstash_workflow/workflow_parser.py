@@ -24,9 +24,9 @@ async def parse_payload(raw_payload):
     raw_initial_payload = decode_base64(encoded_initial_payload["body"])
 
     initial_step = {
-        "step_id": 0,
-        "step_name": "init",
-        "step_type": "Initial",
+        "stepId": 0,
+        "stepName": "init",
+        "stepType": "Initial",
         "out": raw_initial_payload,
         "concurrent": NO_CONCURRENCY,
     }
