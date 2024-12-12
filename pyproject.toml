@@ -36,7 +36,6 @@ qstash = "^2.0.1"
 
 [tool.poetry.group.fastapi.dependencies]
 fastapi = "^0.115.0"
-uvicorn = "^0.30.6"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.0"

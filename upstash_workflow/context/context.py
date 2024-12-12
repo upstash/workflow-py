@@ -20,7 +20,7 @@ class WorkflowContext:
     ):
         self.qstash_client = qstash_client
         self.workflow_run_id = workflow_run_id
-        self.steps = steps
+        self._steps = steps
         self.url = url
         self.headers = headers
         self.request_payload = initial_payload
@@ -29,7 +29,7 @@ class WorkflowContext:
         )
         self.env = env or os.environ.copy()
         self.retries = retries or DEFAULT_RETRIES
-        self.executor = AutoExecutor(self, self.steps)
+        self._executor = AutoExecutor(self, self._steps)
 
     async def run(self, step_name, step_function):
         return await self._add_step(LazyFunctionStep(step_name, step_function))
@@ -38,4 +38,4 @@ class WorkflowContext:
         await self._add_step(LazySleepStep(step_name, duration))
 
     async def _add_step(self, step):
-        return await self.executor.add_step(step)
+        return await self._executor.add_step(step)
