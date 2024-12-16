@@ -20,3 +20,4 @@ bash bootstrap.sh fastapi
 3. Install dependencies with `poetry install`
 4. Create a .env file with `cp .env.example .env` and fill in the environment variables
 5. Format with `poetry run ruff format .`
+6. Type check with `poetry run mypy --show-error-codes .`

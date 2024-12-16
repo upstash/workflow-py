@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Optional, Callable, Awaitable
 from upstash_workflow.workflow_types import Response
 from upstash_workflow.workflow_parser import (
     get_payload,
@@ -17,14 +18,17 @@ from upstash_workflow.workflow_requests import (
 from upstash_workflow.serve.options import process_options, determine_urls
 from upstash_workflow.error import format_workflow_error
 from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow.types import WorkflowClient
 
 _logger = logging.getLogger(__name__)
 
 
-def serve(
-    route_function,
+def serve[
+    TInitialPayload, TRequest, TResponse
+](
+    route_function: Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]],
     *,
-    qstash_client=None,
+    qstash_client: Optional[WorkflowClient] = None,
     on_step_finish=None,
     initial_payload_parser=None,
     receiver=None,

@@ -5,7 +5,7 @@ from upstash_workflow.context.auto_executor import AutoExecutor
 from upstash_workflow.context.steps import LazyFunctionStep, LazySleepStep, LazyCallStep
 
 
-class WorkflowContext:
+class WorkflowContext[TInitialPayload]:
     def __init__(
         self,
         qstash_client,
