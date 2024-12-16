@@ -1,6 +1,8 @@
+import os
 import json
 import logging
-from typing import Optional, Callable, Awaitable
+from typing import Optional, Callable, Awaitable, Dict, Union
+from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response
 from upstash_workflow.workflow_parser import (
     get_payload,
@@ -18,7 +20,7 @@ from upstash_workflow.workflow_requests import (
 from upstash_workflow.serve.options import process_options, determine_urls
 from upstash_workflow.error import format_workflow_error
 from upstash_workflow.context.context import WorkflowContext
-from upstash_workflow.types import WorkflowClient
+from upstash_workflow.types import FinishCondition
 
 _logger = logging.getLogger(__name__)
 
@@ -28,15 +30,15 @@ def serve[
 ](
     route_function: Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]],
     *,
-    qstash_client: Optional[WorkflowClient] = None,
-    on_step_finish=None,
-    initial_payload_parser=None,
-    receiver=None,
-    base_url=None,
-    env=None,
-    retries=None,
-    url=None,
-):
+    qstash_client: Optional[AsyncQStash] = None,
+    on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
+    initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
+    receiver: Optional[Receiver] = None,
+    base_url: Optional[str] = None,
+    env: Optional[Union[Dict[str, Optional[str]], os._Environ[str]]] = None,
+    retries: Optional[int] = None,
+    url: Optional[str] = None,
+) -> Dict[str, Callable[[TRequest], Awaitable[TResponse]]]:
     processed_options = process_options(
         qstash_client=qstash_client,
         on_step_finish=on_step_finish,
@@ -47,14 +49,14 @@ def serve[
         retries=retries,
         url=url,
     )
-    qstash_client = processed_options.get("qstash_client")
-    on_step_finish = processed_options.get("on_step_finish")
-    initial_payload_parser = processed_options.get("initial_payload_parser")
-    receiver = processed_options.get("receiver")
-    base_url = processed_options.get("base_url")
-    env = processed_options.get("env")
-    retries = processed_options.get("retries")
-    url = processed_options.get("url")
+    qstash_client = processed_options.qstash_client
+    on_step_finish = processed_options.on_step_finish
+    initial_payload_parser = processed_options.initial_payload_parser
+    receiver = processed_options.receiver
+    base_url = processed_options.base_url
+    env = processed_options.env
+    retries = processed_options.retries
+    url = processed_options.url
 
     async def _handler(request):
         workflow_url = (await determine_urls(request, url, base_url)).get(
