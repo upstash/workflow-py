@@ -1,9 +1,9 @@
 import os
 import json
 import logging
-from typing import Optional, Callable, Awaitable, Dict, Union
+from typing import Optional, Callable, Awaitable, Dict, Union, cast
 from qstash import AsyncQStash, Receiver
-from upstash_workflow.workflow_types import Response
+from upstash_workflow.workflow_types import Response, Request
 from upstash_workflow.workflow_parser import (
     get_payload,
     validate_request,
@@ -25,9 +25,7 @@ from upstash_workflow.types import FinishCondition
 _logger = logging.getLogger(__name__)
 
 
-def serve[
-    TInitialPayload, TRequest, TResponse
-](
+def serve[TInitialPayload, TRequest: Request, TResponse](
     route_function: Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]],
     *,
     qstash_client: Optional[AsyncQStash] = None,
@@ -58,14 +56,16 @@ def serve[
     retries = processed_options.retries
     url = processed_options.url
 
-    async def _handler(request):
-        workflow_url = (await determine_urls(request, url, base_url)).get(
-            "workflow_url"
-        )
+    async def _handler(request: TRequest):
+        workflow_url = (
+            await determine_urls(cast(Request, request), url, base_url)
+        ).get("workflow_url")
 
         request_payload = await get_payload(request) or ""
         await verify_request(
-            request_payload, request.headers.get("upstash-signature"), receiver
+            request_payload,
+            None if not request.headers else request.headers.get("upstash-signature"),
+            receiver,
         )
 
         validate_request_response = validate_request(request)
@@ -79,12 +79,14 @@ def serve[
         raw_initial_payload = parse_request_response.get("raw_initial_payload")
         steps = parse_request_response.get("steps")
 
-        workflow_context = WorkflowContext(
+        workflow_context = WorkflowContext[TInitialPayload](
             qstash_client=qstash_client,
             workflow_run_id=workflow_run_id,
             initial_payload=initial_payload_parser(raw_initial_payload),
             raw_initial_payload=raw_initial_payload,
-            headers=recreate_user_headers(request.headers),
+            headers=recreate_user_headers(
+                {} if not request.headers else request.headers
+            ),
             steps=steps,
             url=workflow_url,
             env=env,
@@ -116,11 +118,11 @@ def serve[
 
         return on_step_finish("no-workflow-id", "fromCallback")
 
-    async def _safe_handler(request):
+    async def _safe_handler(request: TRequest):
         try:
             return await _handler(request)
         except Exception as error:
-            _logger.error(error)
+            _logger.exception(error)
             return Response(json.dumps(format_workflow_error(error)), status=500)
 
     return {"handler": _safe_handler}

@@ -12,7 +12,7 @@ class Serve:
         def decorator(
             route_function: Callable[
                 [WorkflowContext[TInitialPayload]], Awaitable[None]
-            ]
+            ],
         ):
             handler = cast(
                 Callable[[Request], Awaitable[Response]],

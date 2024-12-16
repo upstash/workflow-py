@@ -47,33 +47,43 @@ class AutoExecutor:
             )
 
             will_wait = (
-                single_step["concurrent"] == NO_CONCURRENCY
-                or single_step["stepId"] == 0
+                single_step.concurrent == NO_CONCURRENCY or single_step.step_id == 0
             )
 
-            single_step["out"] = json.dumps(single_step.get("out", None))
+            single_step.out = json.dumps(single_step.out)
 
             batch_requests.append(
                 {
                     "headers": headers["headers"],
-                    "method": single_step["callMethod"],
-                    "body": single_step["callBody"],
-                    "url": single_step["callUrl"],
+                    "method": single_step.call_method,
+                    "body": single_step.call_body,
+                    "url": single_step.call_url,
                 }
-                if single_step.get("callUrl", None)
+                if single_step.call_url
                 else {
                     "headers": headers["headers"],
                     "method": "POST",
-                    "body": single_step,
+                    "body": {
+                        "stepId": single_step.step_id,
+                        "stepName": single_step.step_name,
+                        "stepType": single_step.step_type,
+                        "out": single_step.out,
+                        "sleepFor": single_step.sleep_for,
+                        "sleepUntil": single_step.sleep_until,
+                        "concurrent": single_step.concurrent,
+                        "targetStep": single_step.target_step,
+                        "callUrl": single_step.call_url,
+                        "callMethod": single_step.call_method,
+                        "callBody": single_step.call_body,
+                        "callHeaders": single_step.call_headers,
+                    },
                     "url": self.context.url,
-                    "notBefore": (
-                        single_step.get("sleep_until", None) if will_wait else None
-                    ),
-                    "delay": single_step.get("sleep_for", None) if will_wait else None,
+                    "notBefore": (single_step.sleep_until if will_wait else None),
+                    "delay": single_step.sleep_for if will_wait else None,
                 }
             )
         response = await self.context.qstash_client.message.batch_json(batch_requests)
-        raise QStashWorkflowAbort(steps[0]["stepName"], steps[0])
+        raise QStashWorkflowAbort(steps[0].step_name, steps[0])
 
 
 def validate_step(lazy_step, step_from_request):

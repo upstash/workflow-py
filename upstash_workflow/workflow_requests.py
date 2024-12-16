@@ -194,12 +194,12 @@ def get_headers(
         WORKFLOW_FEATURE_HEADER: "LazyFetch,InitialBody",
     }
 
-    if not (step and "callUrl" in step):
+    if not (step and step.call_url):
         base_headers[f"Upstash-Forward-{WORKFLOW_PROTOCOL_VERSION_HEADER}"] = (
             WORKFLOW_PROTOCOL_VERSION
         )
 
-    if step and "callUrl" in step:
+    if step and step.call_url:
         base_headers["Upstash-Retries"] = str(
             call_retries if call_retries is not None else 0
         )
@@ -216,7 +216,7 @@ def get_headers(
         for header in user_headers.keys():
             header_value = user_headers.get(header)
             if header_value is not None:
-                if step and "callHeaders" in step:
+                if step and step.call_headers is not None:
                     base_headers[f"Upstash-Callback-Forward-{header}"] = header_value
                 else:
                     base_headers[f"Upstash-Forward-{header}"] = header_value
@@ -227,10 +227,10 @@ def get_headers(
     content_type = user_headers.get("Content-Type") if user_headers else None
     content_type = content_type or DEFAULT_CONTENT_TYPE
 
-    if step and "callHeaders" in step:
+    if step and step.call_headers is not None:
         forwarded_headers = {
             f"Upstash-Forward-{header}": value
-            for header, value in step["callHeaders"].items()
+            for header, value in step.call_headers.items()
         }
 
         return {
@@ -244,17 +244,11 @@ def get_headers(
                 "Upstash-Callback-Workflow-Url": workflow_url,
                 "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
                 "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
-                "Upstash-Callback-Forward-Upstash-Workflow-StepId": str(
-                    step.get("stepId", None)
-                ),
-                "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.get(
-                    "stepName", None
-                ),
-                "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.get(
-                    "stepType", None
-                ),
+                "Upstash-Callback-Forward-Upstash-Workflow-StepId": str(step.step_id),
+                "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.step_name,
+                "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.step_type,
                 "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": str(
-                    step.get("concurrent", None)
+                    step.concurrent
                 ),
                 "Upstash-Callback-Forward-Upstash-Workflow-ContentType": content_type,
                 "Upstash-Workflow-CallType": "toCallback",

@@ -1,103 +1,172 @@
 from abc import ABC, abstractmethod
 import asyncio
+from typing import Optional, Awaitable, Union, Callable, cast, Dict
+from upstash_workflow.types import StepType, Step, HTTPMethods
 
 
-class BaseLazyStep(ABC):
-    def __init__(self, step_name):
+class BaseLazyStep[TResult](ABC):
+    def __init__(self, step_name: str):
         self.step_name = step_name
-        self.step_type = None
+        self.step_type: Optional[StepType] = None
 
     @abstractmethod
-    def get_plan_step(self, concurrent, target_step):
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step:
         pass
 
     @abstractmethod
-    async def get_result_step(self, concurrent, step_id):
+    async def get_result_step(
+        self, concurrent, step_id
+    ) -> Awaitable[Step[TResult, None]]:
         pass
 
 
-class LazyFunctionStep(BaseLazyStep):
-    def __init__(self, step_name, step_function):
+class LazyFunctionStep[TResult](BaseLazyStep):
+    def __init__(
+        self,
+        step_name: str,
+        step_function: Union[Callable[[], TResult], Callable[[], Awaitable[TResult]]],
+    ):
         super().__init__(step_name)
-        self.step_function = step_function
-        self.step_type = "Run"
+        self.step_function: Union[
+            Callable[[], TResult], Callable[[], Awaitable[TResult]]
+        ] = step_function
+        self.step_type: StepType = "Run"
 
-    def get_plan_step(self, concurrent, target_step):
-        return {
-            "stepId": 0,
-            "stepName": self.step_name,
-            "stepType": self.step_type,
-            "concurrent": concurrent,
-            "targetStep": target_step,
-        }
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step:
+        return Step(
+            step_id=0,
+            step_name=self.step_name,
+            step_type=self.step_type,
+            concurrent=concurrent,
+            target_step=target_step,
+            out=None,
+            sleep_for=None,
+            sleep_until=None,
+            call_url=None,
+            call_method=None,
+            call_body=None,
+            call_headers=None,
+        )
 
-    async def get_result_step(self, concurrent, step_id):
+    async def get_result_step(
+        self, concurrent: int, step_id: int
+    ) -> Awaitable[Step[TResult, None]]:
         result = self.step_function()
         if asyncio.iscoroutine(result):
             result = await result
 
-        return {
-            "stepId": step_id,
-            "stepName": self.step_name,
-            "stepType": self.step_type,
-            "out": result,
-            "concurrent": concurrent,
-        }
+        return cast(
+            Awaitable[Step[TResult, None]],
+            Step(
+                step_id=step_id,
+                step_name=self.step_name,
+                step_type=self.step_type,
+                out=result,
+                concurrent=concurrent,
+                target_step=None,
+                sleep_for=None,
+                sleep_until=None,
+                call_url=None,
+                call_method=None,
+                call_body=None,
+                call_headers=None,
+            ),
+        )
 
 
 class LazySleepStep(BaseLazyStep):
-    def __init__(self, step_name, sleep):
+    def __init__(self, step_name: str, sleep: Union[int, str]):
         super().__init__(step_name)
-        self.sleep = sleep
-        self.step_type = "SleepFor"
+        self.sleep: Union[int, str] = sleep
+        self.step_type: StepType = "SleepFor"
 
-    def get_plan_step(self, concurrent, target_step):
-        return {
-            "stepId": 0,
-            "stepName": self.step_name,
-            "stepType": self.step_type,
-            "sleepFor": self.sleep,
-            "concurrent": concurrent,
-            "targetStep": target_step,
-        }
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step:
+        return Step(
+            step_id=0,
+            step_name=self.step_name,
+            step_type=self.step_type,
+            sleep_for=self.sleep,
+            concurrent=concurrent,
+            target_step=target_step,
+            out=None,
+            sleep_until=None,
+            call_url=None,
+            call_method=None,
+            call_body=None,
+            call_headers=None,
+        )
 
-    async def get_result_step(self, concurrent, step_id):
-        return {
-            "stepId": step_id,
-            "stepName": self.step_name,
-            "stepType": self.step_type,
-            "sleepFor": self.sleep,
-            "concurrent": concurrent,
-        }
+    async def get_result_step(self, concurrent: int, step_id: int) -> Awaitable[Step]:
+        return cast(
+            Awaitable[Step],
+            Step(
+                step_id=step_id,
+                step_name=self.step_name,
+                step_type=self.step_type,
+                sleep_for=self.sleep,
+                concurrent=concurrent,
+                target_step=None,
+                out=None,
+                sleep_until=None,
+                call_url=None,
+                call_method=None,
+                call_body=None,
+                call_headers=None,
+            ),
+        )
 
 
-class LazyCallStep(BaseLazyStep):
-    def __init__(self, step_name, url, method, body, headers, retries):
+class LazyCallStep[TResult, TBody](BaseLazyStep):
+    def __init__(
+        self,
+        step_name: str,
+        url: str,
+        method: HTTPMethods,
+        body: TBody,
+        headers: Dict[str, str],
+        retries: int,
+    ):
         super().__init__(step_name)
-        self.url = url
-        self.method = method
-        self.body = body
-        self.headers = headers
-        self.retries = retries
-        self.step_type = "Call"
+        self.url: str = url
+        self.method: HTTPMethods = method
+        self.body: TBody = body
+        self.headers: Dict[str, str] = headers
+        self.retries: int = retries
+        self.step_type: StepType = "Call"
 
-    def get_plan_step(self, concurrent, target_step):
-        return {
-            "stepId": 0,
-            "stepName": self.step_name,
-            "stepType": self.step_type,
-            "concurrent": concurrent,
-            "targetStep": target_step,
-        }
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step:
+        return Step(
+            step_id=0,
+            step_name=self.step_name,
+            step_type=self.step_type,
+            sleep_for=None,
+            concurrent=concurrent,
+            target_step=target_step,
+            out=None,
+            sleep_until=None,
+            call_url=None,
+            call_method=None,
+            call_body=None,
+            call_headers=None,
+        )
 
-    async def get_result_step(self, concurrent, step_id):
-        return {
-            "stepId": step_id,
-            "stepName": self.step_name,
-            "stepType": self.step_type,
-            "concurrent": concurrent,
-            "callUrl": self.url,
-            "callMethod": self.method,
-            "callBody": self.body,
-            "callHeaders": self.headers,
-        }
+    async def get_result_step(
+        self, concurrent: int, step_id: int
+    ) -> Awaitable[Step[TResult, None]]:
+        return cast(
+            Awaitable[Step[TResult, None]],
+            Step(
+                step_id=step_id,
+                step_name=self.step_name,
+                step_type=self.step_type,
+                sleep_for=None,
+                concurrent=concurrent,
+                target_step=None,
+                out=None,
+                sleep_until=None,
+                call_url=self.url,
+                call_method=self.method,
+                call_body=self.body,
+                call_headers=self.headers,
+            ),
+        )

@@ -15,13 +15,13 @@ FinishCondition = Literal[
 
 @dataclass
 class WorkflowServeOptions[TResponse, TInitialPayload]:
-    qstash_client: Optional[AsyncQStash]
-    on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]]
-    initial_payload_parser: Optional[Callable[[str], TInitialPayload]]
+    qstash_client: AsyncQStash
+    on_step_finish: Callable[[str, FinishCondition], TResponse]
+    initial_payload_parser: Callable[[str], TInitialPayload]
     receiver: Optional[Receiver]
     base_url: Optional[str]
-    env: Optional[Union[Dict[str, Optional[str]], os._Environ[str]]]
-    retries: Optional[int]
+    env: Union[Dict[str, Optional[str]], os._Environ[str]]
+    retries: int
     url: Optional[str]
 
 
@@ -34,3 +34,32 @@ StepTypes = [
     "Wait",
     "Notify",
 ]
+
+StepType = Literal[
+    "Initial",
+    "Run",
+    "SleepFor",
+    "SleepUntil",
+    "Call",
+    "Wait",
+    "Notify",
+]
+
+HTTPMethods = Literal["GET", "POST", "PUT", "DELETE", "PATCH"]
+
+
+@dataclass
+class Step[TResult, TBody]:
+    step_id: int
+    step_name: str
+    step_type: StepType
+    out: Optional[TResult]
+    sleep_for: Optional[Union[int, str]]
+    sleep_until: Optional[int]
+    concurrent: int
+    target_step: Optional[int]
+
+    call_url: Optional[str]
+    call_method: Optional[HTTPMethods]
+    call_body: Optional[TBody]
+    call_headers: Optional[Dict[str, str]]
