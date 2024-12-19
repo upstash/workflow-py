@@ -39,13 +39,6 @@ class LazyFunctionStep[TResult](BaseLazyStep):
             step_type=self.step_type,
             concurrent=concurrent,
             target_step=target_step,
-            out=None,
-            sleep_for=None,
-            sleep_until=None,
-            call_url=None,
-            call_method=None,
-            call_body=None,
-            call_headers=None,
         )
 
     async def get_result_step(
@@ -63,13 +56,6 @@ class LazyFunctionStep[TResult](BaseLazyStep):
                 step_type=self.step_type,
                 out=result,
                 concurrent=concurrent,
-                target_step=None,
-                sleep_for=None,
-                sleep_until=None,
-                call_url=None,
-                call_method=None,
-                call_body=None,
-                call_headers=None,
             ),
         )
 
@@ -88,12 +74,6 @@ class LazySleepStep(BaseLazyStep):
             sleep_for=self.sleep,
             concurrent=concurrent,
             target_step=target_step,
-            out=None,
-            sleep_until=None,
-            call_url=None,
-            call_method=None,
-            call_body=None,
-            call_headers=None,
         )
 
     async def get_result_step(self, concurrent: int, step_id: int) -> Awaitable[Step]:
@@ -105,13 +85,6 @@ class LazySleepStep(BaseLazyStep):
                 step_type=self.step_type,
                 sleep_for=self.sleep,
                 concurrent=concurrent,
-                target_step=None,
-                out=None,
-                sleep_until=None,
-                call_url=None,
-                call_method=None,
-                call_body=None,
-                call_headers=None,
             ),
         )
 
@@ -139,15 +112,8 @@ class LazyCallStep[TResult, TBody](BaseLazyStep):
             step_id=0,
             step_name=self.step_name,
             step_type=self.step_type,
-            sleep_for=None,
             concurrent=concurrent,
             target_step=target_step,
-            out=None,
-            sleep_until=None,
-            call_url=None,
-            call_method=None,
-            call_body=None,
-            call_headers=None,
         )
 
     async def get_result_step(
@@ -159,11 +125,7 @@ class LazyCallStep[TResult, TBody](BaseLazyStep):
                 step_id=step_id,
                 step_name=self.step_name,
                 step_type=self.step_type,
-                sleep_for=None,
                 concurrent=concurrent,
-                target_step=None,
-                out=None,
-                sleep_until=None,
                 call_url=self.url,
                 call_method=self.method,
                 call_body=self.body,

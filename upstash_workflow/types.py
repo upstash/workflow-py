@@ -53,13 +53,14 @@ class Step[TResult, TBody]:
     step_id: int
     step_name: str
     step_type: StepType
-    out: Optional[TResult]
-    sleep_for: Optional[Union[int, str]]
-    sleep_until: Optional[int]
     concurrent: int
-    target_step: Optional[int]
 
-    call_url: Optional[str]
-    call_method: Optional[HTTPMethods]
-    call_body: Optional[TBody]
-    call_headers: Optional[Dict[str, str]]
+    out: Optional[TResult] = None
+    sleep_for: Optional[Union[int, str]] = None
+    sleep_until: Optional[int] = None
+    target_step: Optional[int] = None
+
+    call_method: Optional[HTTPMethods] = None
+    call_body: Optional[TBody] = None
+    call_headers: Optional[Dict[str, str]] = None
+    call_url: Optional[str] = None
