@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 import asyncio
 from upstash_workflow.error import QStashWorkflowError
-from typing import Optional, Awaitable, Union, Callable, cast, Dict
+from typing import Optional, Awaitable, Union, Callable, cast, Dict, Any
+from inspect import isawaitable
 from upstash_workflow.types import StepType, Step, HTTPMethods
 
 
@@ -19,9 +20,7 @@ class BaseLazyStep[TResult](ABC):
         pass
 
     @abstractmethod
-    async def get_result_step(
-        self, concurrent, step_id
-    ) -> Awaitable[Step[TResult, None]]:
+    async def get_result_step(self, concurrent, step_id) -> Step[TResult, object]:
         pass
 
 
@@ -48,20 +47,17 @@ class LazyFunctionStep[TResult](BaseLazyStep):
 
     async def get_result_step(
         self, concurrent: int, step_id: int
-    ) -> Awaitable[Step[TResult, None]]:
+    ) -> Step[TResult, object]:
         result = self.step_function()
-        if asyncio.iscoroutine(result):
+        if isawaitable(result):
             result = await result
 
-        return cast(
-            Awaitable[Step[TResult, None]],
-            Step(
-                step_id=step_id,
-                step_name=self.step_name,
-                step_type=self.step_type,
-                out=result,
-                concurrent=concurrent,
-            ),
+        return Step(
+            step_id=step_id,
+            step_name=self.step_name,
+            step_type=self.step_type,
+            out=result,
+            concurrent=concurrent,
         )
 
 
@@ -81,16 +77,13 @@ class LazySleepStep(BaseLazyStep):
             target_step=target_step,
         )
 
-    async def get_result_step(self, concurrent: int, step_id: int) -> Awaitable[Step]:
-        return cast(
-            Awaitable[Step],
-            Step(
-                step_id=step_id,
-                step_name=self.step_name,
-                step_type=self.step_type,
-                sleep_for=self.sleep,
-                concurrent=concurrent,
-            ),
+    async def get_result_step(self, concurrent: int, step_id: int) -> Step:
+        return Step(
+            step_id=step_id,
+            step_name=self.step_name,
+            step_type=self.step_type,
+            sleep_for=self.sleep,
+            concurrent=concurrent,
         )
 
 
@@ -125,17 +118,14 @@ class LazyCallStep[TResult, TBody](BaseLazyStep):
 
     async def get_result_step(
         self, concurrent: int, step_id: int
-    ) -> Awaitable[Step[TResult, None]]:
-        return cast(
-            Awaitable[Step[TResult, None]],
-            Step(
-                step_id=step_id,
-                step_name=self.step_name,
-                step_type=self.step_type,
-                concurrent=concurrent,
-                call_url=self.url,
-                call_method=self.method,
-                call_body=self.body,
-                call_headers=self.headers,
-            ),
+    ) -> Step[TResult, object]:
+        return Step(
+            step_id=step_id,
+            step_name=self.step_name,
+            step_type=self.step_type,
+            concurrent=concurrent,
+            call_url=self.url,
+            call_method=self.method,
+            call_body=self.body,
+            call_headers=self.headers,
         )
