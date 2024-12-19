@@ -56,11 +56,12 @@ class WorkflowContext[TInitialPayload]:
         body=None,
         headers: Optional[Dict[str, str]] = None,
         retries: int = 0,
+        timeout: Optional[Union[int, str]] = None,
     ):
         headers = headers or {}
 
         result = await self._add_step(
-            LazyCallStep(step_name, url, method, body, headers, retries)
+            LazyCallStep(step_name, url, method, body, headers, retries, timeout)
         )
 
         try:

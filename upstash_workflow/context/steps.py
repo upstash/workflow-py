@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
 import asyncio
+from upstash_workflow.error import QStashWorkflowError
 from typing import Optional, Awaitable, Union, Callable, cast, Dict
 from upstash_workflow.types import StepType, Step, HTTPMethods
 
 
 class BaseLazyStep[TResult](ABC):
     def __init__(self, step_name: str):
+        if not step_name:
+            raise QStashWorkflowError(
+                "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
+            )
         self.step_name = step_name
         self.step_type: Optional[StepType] = None
 
@@ -98,6 +103,7 @@ class LazyCallStep[TResult, TBody](BaseLazyStep):
         body: TBody,
         headers: Dict[str, str],
         retries: int,
+        timeout: Optional[Union[int, str]],
     ):
         super().__init__(step_name)
         self.url: str = url
@@ -105,6 +111,7 @@ class LazyCallStep[TResult, TBody](BaseLazyStep):
         self.body: TBody = body
         self.headers: Dict[str, str] = headers
         self.retries: int = retries
+        self.timeout: Optional[Union[int, str]] = timeout
         self.step_type: StepType = "Call"
 
     def get_plan_step(self, concurrent: int, target_step: int) -> Step:
