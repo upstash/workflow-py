@@ -38,12 +38,20 @@ class WorkflowContext:
         await self._add_step(LazySleepStep(step_name, duration))
 
     async def call(
-        self, step_name, *, url, method="GET", body=None, headers=None, retries=0
+        self,
+        step_name,
+        *,
+        url,
+        method="GET",
+        body=None,
+        headers=None,
+        retries=0,
+        timeout=None,
     ):
         headers = headers or {}
 
         result = await self._add_step(
-            LazyCallStep(step_name, url, method, body, headers, retries)
+            LazyCallStep(step_name, url, method, body, headers, retries, timeout)
         )
 
         try:

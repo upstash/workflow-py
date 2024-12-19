@@ -186,6 +186,7 @@ def get_headers(
     step,
     retries,
     call_retries=None,
+    call_timeout=None,
 ):
     base_headers = {
         WORKFLOW_INIT_HEADER: init_header_value,
@@ -198,6 +199,9 @@ def get_headers(
         base_headers[f"Upstash-Forward-{WORKFLOW_PROTOCOL_VERSION_HEADER}"] = (
             WORKFLOW_PROTOCOL_VERSION
         )
+
+    if call_timeout:
+        base_headers["Upstash-Timeout"] = str(call_timeout)
 
     if step and "callUrl" in step:
         base_headers["Upstash-Retries"] = str(

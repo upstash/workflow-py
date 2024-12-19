@@ -2,6 +2,7 @@ import json
 from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
 from upstash_workflow.workflow_requests import get_headers
+from upstash_workflow.context.steps import LazyCallStep
 
 
 class AutoExecutor:
@@ -26,17 +27,18 @@ class AutoExecutor:
             return step["out"]
 
         result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
-        await self.submit_steps_to_qstash([result_step])
+        await self.submit_steps_to_qstash([result_step], [lazy_step])
         return result_step["out"]
 
-    async def submit_steps_to_qstash(self, steps):
+    async def submit_steps_to_qstash(self, steps, lazy_steps):
         if not steps:
             raise QStashWorkflowError(
                 f"Unable to submit steps to QStash. Provided list is empty. Current step: {self.step_count}"
             )
 
         batch_requests = []
-        for single_step in steps:
+        for index, single_step in enumerate(steps):
+            lazy_step = lazy_steps[index]
             headers = get_headers(
                 "false",
                 self.context.workflow_run_id,
@@ -44,6 +46,8 @@ class AutoExecutor:
                 self.context.headers,
                 single_step,
                 self.context.retries,
+                lazy_step.retries if isinstance(lazy_step, LazyCallStep) else None,
+                lazy_step.timeout if isinstance(lazy_step, LazyCallStep) else None,
             )
 
             will_wait = (
