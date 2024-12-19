@@ -1,25 +1,32 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, List, Union, Literal
 import json
 from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
 from upstash_workflow.workflow_requests import get_headers
+from upstash_workflow.types import Step
+from upstash_workflow.context.steps import BaseLazyStep
+
+if TYPE_CHECKING:
+    from upstash_workflow.context.context import WorkflowContext
 
 
 class AutoExecutor:
-    def __init__(self, context, steps):
-        self.context = context
-        self.steps = steps
-        self.non_plan_step_count = len(
-            [step for step in steps if not step.get("target_step", None)]
+    def __init__(self, context: WorkflowContext, steps: List[Step]):
+        self.context: WorkflowContext = context
+        self.steps: List[Step] = steps
+        self.non_plan_step_count: int = len(
+            [step for step in steps if not step.target_step]
         )
-        self.step_count = 0
-        self.plan_step_count = 0
-        self.executing_step = False
+        self.step_count: int = 0
+        self.plan_step_count: int = 0
+        self.executing_step: Union[str, Literal[False]] = False
 
-    async def add_step(self, step_info):
+    async def add_step[TResult](self, step_info: BaseLazyStep[TResult]):
         self.step_count += 1
         return await self.run_single(step_info)
 
-    async def run_single(self, lazy_step):
+    async def run_single[TResult](self, lazy_step: BaseLazyStep[TResult]):
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
             validate_step(lazy_step, step)
