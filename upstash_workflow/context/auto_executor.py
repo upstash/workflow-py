@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List, Union, Literal, cast, Any
 import json
 from qstash.message import BatchJsonRequest
 from upstash_workflow.constants import NO_CONCURRENCY
-from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
+from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.workflow_requests import get_headers
 from upstash_workflow.types import Step, HTTPMethods
 from upstash_workflow.context.steps import BaseLazyStep, LazyCallStep
@@ -17,7 +17,11 @@ class AutoExecutor:
         self.context: WorkflowContext = context
         self.steps: List[Step] = steps
         self.non_plan_step_count: int = len(
-            [step for step in steps if not step.target_step]
+            [
+                step
+                for step in steps
+                if not (hasattr(step, "target_step") and step.target_step)
+            ]
         )
         self.step_count: int = 0
         self.plan_step_count: int = 0
@@ -41,7 +45,7 @@ class AutoExecutor:
         self, steps: List[Step], lazy_steps: List[BaseLazyStep]
     ):
         if not steps:
-            raise QStashWorkflowError(
+            raise WorkflowError(
                 f"Unable to submit steps to QStash. Provided list is empty. Current step: {self.step_count}"
             )
 
@@ -100,18 +104,18 @@ class AutoExecutor:
                 )
             )
         response = await self.context.qstash_client.message.batch_json(batch_requests)
-        raise QStashWorkflowAbort(steps[0].step_name, steps[0])
+        raise WorkflowAbort(steps[0].step_name, steps[0])
 
 
-def validate_step(lazy_step: BaseLazyStep, step_from_request: Step) -> None:
+def validate_step(lazy_step: BaseLazyStep, step_from_request) -> None:
     if lazy_step.step_name != step_from_request.step_name:
-        raise QStashWorkflowError(
+        raise WorkflowError(
             f"Incompatible step name. Expected '{lazy_step.step_name}', "
             f"got '{step_from_request.step_name}' from the request"
         )
 
     if lazy_step.step_type != step_from_request.step_type:
-        raise QStashWorkflowError(
+        raise WorkflowError(
             f"Incompatible step type. Expected '{lazy_step.step_type}', "
             f"got '{step_from_request.step_type}' from the request"
         )

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import asyncio
-from upstash_workflow.error import QStashWorkflowError
+from upstash_workflow.error import WorkflowError
 from typing import Optional, Awaitable, Union, Callable, cast, Dict, Any
 from inspect import isawaitable
 from upstash_workflow.types import StepType, Step, HTTPMethods
@@ -9,7 +9,7 @@ from upstash_workflow.types import StepType, Step, HTTPMethods
 class BaseLazyStep[TResult](ABC):
     def __init__(self, step_name: str):
         if not step_name:
-            raise QStashWorkflowError(
+            raise WorkflowError(
                 "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
             )
         self.step_name = step_name

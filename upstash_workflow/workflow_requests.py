@@ -2,7 +2,7 @@ import httpx
 import json
 import base64
 import logging
-from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
+from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.constants import (
     WORKFLOW_INIT_HEADER,
     WORKFLOW_ID_HEADER,
@@ -40,13 +40,13 @@ async def trigger_first_invocation(
 
 async def trigger_route_function(on_step, on_cleanup):
     try:
-        # When onStep completes successfully, it throws QStashWorkflowAbort
+        # When onStep completes successfully, it throws WorkflowAbort
         # indicating that the step has been successfully executed.
         # This ensures that onCleanup is only called when no exception is thrown.
         await on_step()
         await on_cleanup()
     except Exception as error:
-        if isinstance(error, QStashWorkflowAbort):
+        if isinstance(error, WorkflowAbort):
             return
         raise error
 
@@ -173,7 +173,7 @@ async def handle_third_party_call_result(
 
     except Exception as error:
         is_call_return = request.headers.get("Upstash-Workflow-Callback")
-        raise QStashWorkflowError(
+        raise WorkflowError(
             f"Error when handling call return (isCallReturn={is_call_return}): {str(error)}"
         )
 
@@ -278,7 +278,7 @@ async def verify_request(body, signature, verifier):
         if not is_valid:
             raise Exception("Signature in `Upstash-Signature` header is not valid")
     except Exception as error:
-        raise QStashWorkflowError(
+        raise WorkflowError(
             f"Failed to verify that the Workflow request comes from QStash: {error}\n\n"
             + "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n"
             + "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"

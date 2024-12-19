@@ -1,15 +1,21 @@
-class QStashError(Exception): ...
+from typing import Optional
+from qstash.errors import QStashError
+from upstash_workflow.types import Step
 
 
-class QStashWorkflowError(QStashError):
-    def __init__(self, *args: object) -> None:
-        super().__init__(*args)
+class WorkflowError(QStashError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.name = "WorkflowError"
 
 
-class QStashWorkflowAbort(Exception):
-    def __init__(self, step_name, step_info):
-        self.step_name = step_name
-        self.step_info = step_info
+class WorkflowAbort(Exception):
+    def __init__(
+        self, step_name: str, step_info: Optional[Step], cancel_workflow: bool = False
+    ) -> None:
+        self.step_name: str = step_name
+        self.step_info: Optional[Step] = step_info
+        self.cancel_workflow: bool = cancel_workflow
 
         message = (
             "This is an Upstash Workflow error thrown after a step executes. It is expected to be raised."
@@ -19,10 +25,10 @@ class QStashWorkflowAbort(Exception):
         )
 
         super().__init__(message)
-        self.name = "QStashWorkflowAbort"
+        self.name = "WorkflowAbort"
 
 
-def format_workflow_error(error: Exception):
+def format_workflow_error(error: object):
     if isinstance(error, Exception):
         return {"error": error.__class__.__name__, "message": str(error)}
     return {"error": "Error", "message": "An error occurred while executing workflow."}
