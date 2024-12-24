@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Literal, Optional, Dict, Union
+from typing import Callable, Literal, Optional, Dict, Union, List
 from qstash import AsyncQStash, Receiver
 from dataclasses import dataclass
 
@@ -64,3 +64,15 @@ class Step[TResult, TBody]:
     call_body: Optional[TBody] = None
     call_headers: Optional[Dict[str, str]] = None
     call_url: Optional[str] = None
+
+
+@dataclass
+class ValidateRequestResponse:
+    is_first_invocation: bool
+    workflow_run_id: str
+
+
+@dataclass
+class ParseRequestResponse:
+    raw_initial_payload: str
+    steps: List[Step]

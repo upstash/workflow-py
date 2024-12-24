@@ -69,15 +69,15 @@ def serve[TInitialPayload, TRequest: Request, TResponse](
         )
 
         validate_request_response = validate_request(request)
-        is_first_invocation = validate_request_response.get("is_first_invocation")
-        workflow_run_id = validate_request_response.get("workflow_run_id")
+        is_first_invocation = validate_request_response.is_first_invocation
+        workflow_run_id = validate_request_response.workflow_run_id
 
         parse_request_response = await parse_request(
             request_payload, is_first_invocation
         )
 
-        raw_initial_payload = parse_request_response.get("raw_initial_payload")
-        steps = parse_request_response.get("steps")
+        raw_initial_payload = parse_request_response.raw_initial_payload
+        steps = parse_request_response.steps
 
         workflow_context = WorkflowContext[TInitialPayload](
             qstash_client=qstash_client,

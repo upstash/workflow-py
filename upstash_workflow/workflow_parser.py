@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from upstash_workflow.utils import nanoid, decode_base64
 from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
@@ -7,10 +8,11 @@ from upstash_workflow.constants import (
     NO_CONCURRENCY,
 )
 from upstash_workflow.error import WorkflowError
-from upstash_workflow.types import Step
+from upstash_workflow.types import Step, ValidateRequestResponse, ParseRequestResponse
+from upstash_workflow.workflow_types import Request
 
 
-async def get_payload(request):
+async def get_payload(request: Request):
     try:
         return json.dumps(await request.json())
     except Exception:
@@ -69,9 +71,13 @@ async def parse_payload(raw_payload):
     return {"raw_initial_payload": raw_initial_payload, "steps": parsed_steps}
 
 
-def validate_request(request):
+def validate_request(request: Request) -> ValidateRequestResponse:
     # Get version header
-    version_header = request.headers.get(WORKFLOW_PROTOCOL_VERSION_HEADER)
+    version_header = (
+        request.headers.get(WORKFLOW_PROTOCOL_VERSION_HEADER)
+        if request.headers
+        else None
+    )
     is_first_invocation = not version_header
 
     # Verify workflow protocol version if not first invocation
@@ -86,23 +92,24 @@ def validate_request(request):
     if is_first_invocation:
         workflow_run_id = f"wfr_{nanoid()}"
     else:
-        workflow_run_id = request.headers.get(WORKFLOW_ID_HEADER) or ""
+        workflow_run_id = (
+            request.headers.get(WORKFLOW_ID_HEADER, "") if request.headers else ""
+        )
 
     if not workflow_run_id:
         raise WorkflowError("Couldn't get workflow id from header")
 
-    return {
-        "is_first_invocation": is_first_invocation,
-        "workflow_run_id": workflow_run_id,
-    }
+    return ValidateRequestResponse(
+        is_first_invocation=is_first_invocation, workflow_run_id=workflow_run_id
+    )
 
 
-async def parse_request(request_payload, is_first_invocation):
+async def parse_request(request_payload: Optional[str], is_first_invocation: bool):
     if is_first_invocation:
-        return {
-            "raw_initial_payload": request_payload or "",
-            "steps": [],
-        }
+        return ParseRequestResponse(
+            raw_initial_payload=(request_payload or ""),
+            steps=[],
+        )
     else:
         if not request_payload:
             raise WorkflowError("Only first call can have an empty body")
@@ -111,7 +118,6 @@ async def parse_request(request_payload, is_first_invocation):
         raw_initial_payload = parsed_data["raw_initial_payload"]
         steps = parsed_data["steps"]
 
-        return {
-            "raw_initial_payload": raw_initial_payload,
-            "steps": steps,
-        }
+        return ParseRequestResponse(
+            raw_initial_payload=raw_initial_payload, steps=steps
+        )

@@ -40,3 +40,8 @@ class Request:
         self.method = method.upper()
         self.url = url
         self.query_params = query_params or {}
+
+    def json(self) -> Any:
+        if not self.body:
+            return {}
+        return json.loads(self.body)
