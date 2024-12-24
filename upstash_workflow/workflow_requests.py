@@ -126,15 +126,18 @@ async def handle_third_party_call_result(
                     content_type,
                 ]
             ):
+                info = json.dumps(
+                    {
+                        "workflow_run_id": workflow_run_id,
+                        "step_id_str": step_id_str,
+                        "step_name": step_name,
+                        "step_type": step_type,
+                        "concurrent_str": concurrent_str,
+                        "content_type": content_type,
+                    }
+                )
                 raise ValueError(
-                    f"Missing info in callback message source header: {json.dumps({
-                        'workflow_run_id': workflow_run_id,
-                        'step_id_str': step_id_str,
-                        'step_name': step_name,
-                        'step_type': step_type,
-                        'concurrent_str': concurrent_str,
-                        'content_type': content_type
-                    })}"
+                    f"Missing info in callback message source header: {info}"
                 )
 
             user_headers = recreate_user_headers(headers)

@@ -84,11 +84,11 @@ def validate_step(lazy_step, step_from_request):
     if lazy_step.step_name != step_from_request["stepName"]:
         raise QStashWorkflowError(
             f"Incompatible step name. Expected '{lazy_step.step_name}', "
-            f"got '{step_from_request["stepName"]}' from the request"
+            f"got '{step_from_request['stepName']}' from the request"
         )
 
     if lazy_step.step_type != step_from_request["stepType"]:
         raise QStashWorkflowError(
             f"Incompatible step type. Expected '{lazy_step.step_type}', "
-            f"got '{step_from_request["stepType"]}' from the request"
+            f"got '{step_from_request['stepType']}' from the request"
         )
