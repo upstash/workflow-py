@@ -103,7 +103,7 @@ def serve[TInitialPayload, TRequest: Request, TResponse](
 
         if call_return_check == "continue-workflow":
             if is_first_invocation:
-                await trigger_first_invocation(workflow_context, retries, env)
+                await trigger_first_invocation(workflow_context, retries)
             else:
 
                 async def on_step():

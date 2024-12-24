@@ -1,7 +1,10 @@
+from __future__ import annotations
 import httpx
 import json
 import base64
 import logging
+from typing import TYPE_CHECKING, Callable, Awaitable, Literal, Optional, Union, cast
+from qstash import AsyncQStash, Receiver
 from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.constants import (
     WORKFLOW_INIT_HEADER,
@@ -12,15 +15,18 @@ from upstash_workflow.constants import (
     DEFAULT_CONTENT_TYPE,
     WORKFLOW_FEATURE_HEADER,
 )
-from upstash_workflow.types import StepTypes
+from upstash_workflow.types import StepTypes, Step
+from upstash_workflow.workflow_types import Request
+
+if TYPE_CHECKING:
+    from upstash_workflow.context.context import WorkflowContext
 
 _logger = logging.getLogger(__name__)
 
 
-async def trigger_first_invocation(
-    workflow_context,
-    retries,
-    env,
+async def trigger_first_invocation[TInitialPayload](
+    workflow_context: WorkflowContext[TInitialPayload],
+    retries: int,
 ):
     headers = get_headers(
         "true",
@@ -38,7 +44,9 @@ async def trigger_first_invocation(
     )
 
 
-async def trigger_route_function(on_step, on_cleanup):
+async def trigger_route_function(
+    on_step: Callable[[], Awaitable[None]], on_cleanup: Callable[[], Awaitable[None]]
+):
     try:
         # When onStep completes successfully, it throws WorkflowAbort
         # indicating that the step has been successfully executed.
@@ -51,8 +59,8 @@ async def trigger_route_function(on_step, on_cleanup):
         raise error
 
 
-async def trigger_workflow_delete(
-    workflow_context,
+async def trigger_workflow_delete[TInitialPayload](
+    workflow_context: WorkflowContext[TInitialPayload],
     cancel=False,
 ):
     async with httpx.AsyncClient() as client:
@@ -83,10 +91,14 @@ def recreate_user_headers(headers: dict) -> dict:
 
 
 async def handle_third_party_call_result(
-    request, request_payload, client, workflow_url, retries
+    request: Request,
+    request_payload: str,
+    client: AsyncQStash,
+    workflow_url: str,
+    retries: int,
 ):
     try:
-        if request.headers.get("Upstash-Workflow-Callback"):
+        if request.headers and request.headers.get("Upstash-Workflow-Callback"):
             if request_payload:
                 callback_payload = request_payload
             else:
@@ -137,6 +149,13 @@ async def handle_third_party_call_result(
                     })}"
                 )
 
+            workflow_run_id = cast(str, workflow_run_id)
+            step_id_str = cast(str, step_id_str)
+            step_name = cast(str, step_name)
+            step_type = cast(str, step_type)
+            concurrent_str = cast(str, concurrent_str)
+            content_type = cast(str, content_type)
+
             user_headers = recreate_user_headers(headers)
             request_headers = get_headers(
                 "false",
@@ -172,21 +191,23 @@ async def handle_third_party_call_result(
         return "continue-workflow"
 
     except Exception as error:
-        is_call_return = request.headers.get("Upstash-Workflow-Callback")
+        is_call_return = request.headers and request.headers.get(
+            "Upstash-Workflow-Callback"
+        )
         raise WorkflowError(
             f"Error when handling call return (isCallReturn={is_call_return}): {str(error)}"
         )
 
 
 def get_headers(
-    init_header_value,
-    workflow_run_id,
-    workflow_url,
-    user_headers,
-    step,
-    retries,
-    call_retries=None,
-    call_timeout=None,
+    init_header_value: Literal["true", "false"],
+    workflow_run_id: str,
+    workflow_url: str,
+    user_headers: Optional[dict] = None,
+    step: Optional[Step] = None,
+    retries: Optional[int] = None,
+    call_retries: Optional[int] = None,
+    call_timeout: Optional[Union[int, str]] = None,
 ):
     base_headers = {
         WORKFLOW_INIT_HEADER: init_header_value,
@@ -262,20 +283,21 @@ def get_headers(
     return {"headers": base_headers}
 
 
-async def verify_request(body, signature, verifier):
+async def verify_request(
+    body: str, signature: Union[str, None], verifier: Optional[Receiver]
+):
     if not verifier:
         return
 
     try:
         if not signature:
             raise Exception("`Upstash-Signature` header is not passed.")
-        is_valid = await verifier.verify(
-            {
-                "body": body,
-                "signature": signature,
-            }
-        )
-        if not is_valid:
+        try:
+            verifier.verify(
+                body=body,
+                signature=signature,
+            )
+        except Exception as error:
             raise Exception("Signature in `Upstash-Signature` header is not valid")
     except Exception as error:
         raise WorkflowError(
