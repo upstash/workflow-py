@@ -1,18 +1,18 @@
 from fastapi import FastAPI, Request, Response
-from typing import Callable, Awaitable, cast
+from typing import Callable, Awaitable, cast, TypeVar
 from upstash_workflow.serve.serve import serve
 from upstash_workflow.context.context import WorkflowContext
+
+TInitialPayload = TypeVar("TInitialPayload")
 
 
 class Serve:
     def __init__(self, app: FastAPI):
         self.app = app
 
-    def post[TInitialPayload](self, path):
+    def post(self, path):
         def decorator(
-            route_function: Callable[
-                [WorkflowContext[TInitialPayload]], Awaitable[None]
-            ],
+            route_function: Callable[[WorkflowContext], Awaitable[None]],
         ):
             handler = cast(
                 Callable[[Request], Awaitable[Response]],

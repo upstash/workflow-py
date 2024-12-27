@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from typing import Optional, Callable, Awaitable, Dict, Union, cast
+from typing import Optional, Callable, Awaitable, Dict, Union, cast, TypeVar
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
 from upstash_workflow.workflow_parser import (
@@ -24,16 +24,20 @@ from upstash_workflow.types import FinishCondition
 
 _logger = logging.getLogger(__name__)
 
+TInitialPayload = TypeVar("TInitialPayload")
+TRequest = TypeVar("TRequest", bound=Request)
+TResponse = TypeVar("TResponse")
 
-def serve[TInitialPayload, TRequest: Request, TResponse](
-    route_function: Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]],
+
+def serve(
+    route_function: Callable[[WorkflowContext], Awaitable[None]],
     *,
     qstash_client: Optional[AsyncQStash] = None,
     on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
     base_url: Optional[str] = None,
-    env: Optional[Union[Dict[str, Optional[str]], os._Environ[str]]] = None,
+    env: Optional[Union[Dict[str, Optional[str]], os._Environ]] = None,
     retries: Optional[int] = None,
     url: Optional[str] = None,
 ) -> Dict[str, Callable[[TRequest], Awaitable[TResponse]]]:
@@ -79,7 +83,7 @@ def serve[TInitialPayload, TRequest: Request, TResponse](
         raw_initial_payload = parse_request_response.raw_initial_payload
         steps = parse_request_response.steps
 
-        workflow_context = WorkflowContext[TInitialPayload](
+        workflow_context = WorkflowContext(
             qstash_client=qstash_client,
             workflow_run_id=workflow_run_id,
             initial_payload=initial_payload_parser(raw_initial_payload),

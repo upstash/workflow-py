@@ -3,7 +3,16 @@ import httpx
 import json
 import base64
 import logging
-from typing import TYPE_CHECKING, Callable, Awaitable, Literal, Optional, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Awaitable,
+    Literal,
+    Optional,
+    Union,
+    cast,
+    TypeVar,
+)
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.constants import (
@@ -24,8 +33,8 @@ if TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-async def trigger_first_invocation[TInitialPayload](
-    workflow_context: WorkflowContext[TInitialPayload],
+async def trigger_first_invocation(
+    workflow_context: WorkflowContext,
     retries: int,
 ):
     headers = get_headers(
@@ -59,8 +68,8 @@ async def trigger_route_function(
         raise error
 
 
-async def trigger_workflow_delete[TInitialPayload](
-    workflow_context: WorkflowContext[TInitialPayload],
+async def trigger_workflow_delete(
+    workflow_context: WorkflowContext,
     cancel=False,
 ):
     async with httpx.AsyncClient() as client:
@@ -138,15 +147,18 @@ async def handle_third_party_call_result(
                     content_type,
                 ]
             ):
+                info = json.dumps(
+                    {
+                        "workflow_run_id": workflow_run_id,
+                        "step_id_str": step_id_str,
+                        "step_name": step_name,
+                        "step_type": step_type,
+                        "concurrent_str": concurrent_str,
+                        "content_type": content_type,
+                    }
+                )
                 raise ValueError(
-                    f"Missing info in callback message source header: {json.dumps({
-                        'workflow_run_id': workflow_run_id,
-                        'step_id_str': step_id_str,
-                        'step_name': step_name,
-                        'step_type': step_type,
-                        'concurrent_str': concurrent_str,
-                        'content_type': content_type
-                    })}"
+                    f"Missing info in callback message source header: {info}"
                 )
 
             workflow_run_id = cast(str, workflow_run_id)

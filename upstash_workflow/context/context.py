@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Dict, Union, Optional, Callable, Awaitable
+from typing import List, Dict, Union, Optional, Callable, Awaitable, TypeVar
 from qstash import AsyncQStash
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.context.auto_executor import AutoExecutor
@@ -8,8 +8,11 @@ from upstash_workflow.context.steps import LazyFunctionStep, LazySleepStep, Lazy
 from upstash_workflow.types import Step, HTTPMethods
 from upstash_workflow.context.steps import BaseLazyStep
 
+TInitialPayload = TypeVar("TInitialPayload")
+TResult = TypeVar("TResult")
 
-class WorkflowContext[TInitialPayload]:
+
+class WorkflowContext:
     def __init__(
         self,
         qstash_client: AsyncQStash,
@@ -19,7 +22,7 @@ class WorkflowContext[TInitialPayload]:
         url: str,
         initial_payload: TInitialPayload,
         raw_initial_payload,
-        env: Union[Dict[str, Optional[str]], os._Environ[str]],
+        env: Union[Dict[str, Optional[str]], os._Environ],
         retries: int,
     ):
         self.qstash_client: AsyncQStash = qstash_client
@@ -31,13 +34,13 @@ class WorkflowContext[TInitialPayload]:
         self.raw_initial_payload = raw_initial_payload or json.dumps(
             self.request_payload
         )
-        self.env: Union[Dict[str, str], Dict[str, Optional[str]], os._Environ[str]] = (
+        self.env: Union[Dict[str, str], Dict[str, Optional[str]], os._Environ] = (
             env or os.environ.copy()
         )
         self.retries: int = retries or DEFAULT_RETRIES
         self._executor: AutoExecutor = AutoExecutor(self, self._steps)
 
-    async def run[TResult](
+    async def run(
         self,
         step_name: str,
         step_function: Union[Callable[[], TResult], Callable[[], Awaitable[TResult]]],
@@ -47,7 +50,7 @@ class WorkflowContext[TInitialPayload]:
     async def sleep(self, step_name: str, duration: Union[int, str]):
         await self._add_step(LazySleepStep(step_name, duration))
 
-    async def call[TResult](
+    async def call(
         self,
         step_name: str,
         *,
@@ -69,5 +72,5 @@ class WorkflowContext[TInitialPayload]:
         except:
             return result
 
-    async def _add_step[TResult](self, step: BaseLazyStep[TResult]):
+    async def _add_step(self, step: BaseLazyStep):
         return await self._executor.add_step(step)

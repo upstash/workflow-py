@@ -1,7 +1,7 @@
 import os
 import json
 import re
-from typing import Callable, Dict, Optional, cast, Union
+from typing import Callable, Dict, Optional, cast, Union, TypeVar
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
 from upstash_workflow.constants import DEFAULT_RETRIES
@@ -10,18 +10,21 @@ from upstash_workflow.types import (
     WorkflowServeOptions,
 )
 
+TResponse = TypeVar("TResponse")
+TInitialPayload = TypeVar("TInitialPayload")
 
-def process_options[TResponse, TInitialPayload](
+
+def process_options(
     *,
     qstash_client: Optional[AsyncQStash] = None,
     on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
     base_url: Optional[str] = None,
-    env: Optional[Union[Dict[str, Optional[str]], os._Environ[str]]] = None,
+    env: Optional[Union[Dict[str, Optional[str]], os._Environ]] = None,
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
-) -> WorkflowServeOptions[TResponse, TInitialPayload]:
+) -> WorkflowServeOptions:
     environment = env if env is not None else os.environ
 
     receiver_environment_variables_set = bool(
@@ -51,7 +54,7 @@ def process_options[TResponse, TInitialPayload](
             # If not a JSON parsing error, re-raise
             raise error
 
-    return WorkflowServeOptions[TResponse, TInitialPayload](
+    return WorkflowServeOptions[TInitialPayload, TResponse](
         qstash_client=qstash_client
         or AsyncQStash(
             cast(str, environment.get("QSTASH_TOKEN", "")),

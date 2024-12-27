@@ -27,11 +27,11 @@ class AutoExecutor:
         self.plan_step_count: int = 0
         self.executing_step: Union[str, Literal[False]] = False
 
-    async def add_step[TResult](self, step_info: BaseLazyStep[TResult]):
+    async def add_step(self, step_info: BaseLazyStep):
         self.step_count += 1
         return await self.run_single(step_info)
 
-    async def run_single[TResult](self, lazy_step: BaseLazyStep[TResult]):
+    async def run_single(self, lazy_step: BaseLazyStep):
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
             validate_step(lazy_step, step)
