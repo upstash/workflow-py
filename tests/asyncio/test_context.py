@@ -1,6 +1,7 @@
 import pytest
 from qstash import AsyncQStash
 from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow.error import QStashWorkflowAbort
 from tests.asyncio.utils import (
     mock_qstash_server,
     RequestFields,
@@ -34,7 +35,7 @@ async def test_workflow_headers(qstash_client):
     )
 
     async def execute():
-        try:
+        with pytest.raises(QStashWorkflowAbort) as excinfo:
             await context.call(
                 "my-step",
                 url=url,
@@ -43,9 +44,8 @@ async def test_workflow_headers(qstash_client):
                 headers={"my-header": "my-value"},
                 retries=retries,
             )
-            pytest.fail("Expected function to throw an error")
-        except Exception as e:
-            assert "Aborting workflow after executing step 'my-step'." in str(e)
+
+        assert "Aborting workflow after executing step 'my-step'." in str(excinfo.value)
 
     await mock_qstash_server(
         execute=execute,
