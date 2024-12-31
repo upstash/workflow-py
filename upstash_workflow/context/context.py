@@ -21,7 +21,6 @@ class WorkflowContext:
         steps: List[Step],
         url: str,
         initial_payload: TInitialPayload,
-        raw_initial_payload,
         env: Union[Dict[str, Optional[str]], os._Environ],
         retries: int,
     ):
@@ -31,9 +30,6 @@ class WorkflowContext:
         self.url: str = url
         self.headers: Dict[str, str] = headers
         self.request_payload: TInitialPayload = initial_payload
-        self.raw_initial_payload = raw_initial_payload or json.dumps(
-            self.request_payload
-        )
         self.env: Union[Dict[str, str], Dict[str, Optional[str]], os._Environ] = (
             env or os.environ.copy()
         )

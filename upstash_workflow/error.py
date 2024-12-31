@@ -11,7 +11,10 @@ class WorkflowError(QStashError):
 
 class WorkflowAbort(Exception):
     def __init__(
-        self, step_name: str, step_info: Optional[Step], cancel_workflow: bool = False
+        self,
+        step_name: str,
+        step_info: Optional[Step] = None,
+        cancel_workflow: bool = False,
     ) -> None:
         self.step_name: str = step_name
         self.step_info: Optional[Step] = step_info
