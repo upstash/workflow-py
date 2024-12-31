@@ -38,6 +38,10 @@ jobs:
         run: |
           poetry run ruff format --check .
 
+      - name: Run mypy
+        run: |
+          poetry run mypy --show-error-codes .
+
       - name: Run tests
         run: |
           poetry run pytest
