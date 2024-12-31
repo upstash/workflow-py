@@ -1,10 +1,16 @@
 import json
 import os
+import datetime
 from typing import List, Dict, Union, Optional, Callable, Awaitable, TypeVar
 from qstash import AsyncQStash
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.context.auto_executor import AutoExecutor
-from upstash_workflow.context.steps import LazyFunctionStep, LazySleepStep, LazyCallStep
+from upstash_workflow.context.steps import (
+    LazyFunctionStep,
+    LazySleepStep,
+    LazySleepUntilStep,
+    LazyCallStep,
+)
 from upstash_workflow.types import Step, HTTPMethods
 from upstash_workflow.context.steps import BaseLazyStep
 
@@ -49,6 +55,18 @@ class WorkflowContext:
 
     async def sleep(self, step_name: str, duration: Union[int, str]):
         await self._add_step(LazySleepStep(step_name, duration))
+
+    async def sleep_until(
+        self, step_name: str, data_time: Union[datetime.datetime, str, float]
+    ) -> None:
+        if isinstance(data_time, (int, float)):
+            time = data_time
+        elif isinstance(data_time, str):
+            time = datetime.datetime.fromisoformat(data_time).timestamp()
+        else:
+            time = data_time.timestamp()
+
+        await self._add_step(LazySleepUntilStep(step_name, round(time)))
 
     async def call(
         self,

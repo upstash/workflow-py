@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from upstash_workflow.fastapi import Serve
+import time
 
 app = FastAPI()
 serve = Serve(app)
@@ -25,7 +26,7 @@ async def sleep(context):
 
     result1 = await context.run("step1", _step1)
 
-    await context.sleep("sleep1", 3)
+    await context.sleep_until("sleep1", time.time() + 3)
 
     async def _step2():
         output = some_work(result1)
