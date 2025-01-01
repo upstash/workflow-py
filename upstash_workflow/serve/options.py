@@ -2,7 +2,7 @@ import os
 import json
 import re
 from typing import Callable, Dict, Optional, cast, Union, TypeVar
-from qstash import AsyncQStash, Receiver
+from qstash import QStash, AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
@@ -15,8 +15,6 @@ TInitialPayload = TypeVar("TInitialPayload")
 
 
 def process_options(
-    *,
-    qstash_client: Optional[AsyncQStash] = None,
     on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
@@ -54,14 +52,10 @@ def process_options(
             # If not a JSON parsing error, re-raise
             raise error
 
-    return WorkflowServeOptions[TInitialPayload, TResponse](
-        qstash_client=qstash_client
-        or AsyncQStash(
-            cast(str, environment.get("QSTASH_TOKEN", "")),
-        ),
-        on_step_finish=on_step_finish or _on_step_finish,
-        initial_payload_parser=initial_payload_parser or _initial_payload_parser,
-        receiver=receiver
+    return (
+        on_step_finish or _on_step_finish,
+        initial_payload_parser or _initial_payload_parser,
+        receiver
         or (
             Receiver(
                 current_signing_key=cast(
@@ -74,14 +68,14 @@ def process_options(
             if receiver_environment_variables_set
             else None
         ),
-        base_url=base_url or environment.get("UPSTASH_WORKFLOW_URL"),
-        env=environment,
-        retries=retries or DEFAULT_RETRIES,
-        url=url,
+        base_url or environment.get("UPSTASH_WORKFLOW_URL"),
+        environment,
+        retries or DEFAULT_RETRIES,
+        url,
     )
 
 
-async def determine_urls(
+def determine_urls(
     request: Request,
     url: Optional[str],
     base_url: Optional[str],
@@ -100,6 +94,4 @@ async def determine_urls(
     else:
         workflow_url = initial_workflow_url
 
-    return {
-        "workflow_url": workflow_url,
-    }
+    return workflow_url

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Response
 from typing import Callable, Awaitable, cast, TypeVar
-from upstash_workflow.serve.serve import serve
-from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow.asyncio.serve.serve import serve
+from upstash_workflow.asyncio.context.context import WorkflowContext
 
 TInitialPayload = TypeVar("TInitialPayload")
 

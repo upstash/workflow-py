@@ -1,6 +1,16 @@
 import os
-from typing import Callable, Literal, Optional, Dict, Union, List, TypeVar, Generic
-from qstash import AsyncQStash, Receiver
+from typing import (
+    Callable,
+    Literal,
+    Optional,
+    Dict,
+    Union,
+    List,
+    TypeVar,
+    Generic,
+    Tuple,
+)
+from qstash import QStash, AsyncQStash, Receiver
 from dataclasses import dataclass
 
 
@@ -16,16 +26,15 @@ TInitialPayload = TypeVar("TInitialPayload")
 TResponse = TypeVar("TResponse")
 
 
-@dataclass
-class WorkflowServeOptions(Generic[TInitialPayload, TResponse]):
-    qstash_client: AsyncQStash
-    on_step_finish: Callable[[str, FinishCondition], TResponse]
-    initial_payload_parser: Callable[[str], TInitialPayload]
-    receiver: Optional[Receiver]
-    base_url: Optional[str]
-    env: Union[Dict[str, Optional[str]], os._Environ]
-    retries: int
-    url: Optional[str]
+WorkflowServeOptions = Tuple[
+    Callable[[str, FinishCondition], TResponse],
+    Callable[[str], TInitialPayload],
+    Optional[Receiver],
+    Optional[str],
+    Union[Dict[str, Optional[str]], os._Environ],
+    int,
+    Optional[str],
+]
 
 
 StepTypes = [

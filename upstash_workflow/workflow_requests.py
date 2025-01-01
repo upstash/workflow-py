@@ -3,6 +3,8 @@ import httpx
 import json
 import base64
 import logging
+from asyncio import iscoroutinefunction, iscoroutine
+from collections.abc import Generator
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -11,9 +13,8 @@ from typing import (
     Optional,
     Union,
     cast,
-    TypeVar,
 )
-from qstash import AsyncQStash, Receiver
+from qstash import Receiver
 from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.constants import (
     WORKFLOW_INIT_HEADER,
@@ -29,12 +30,15 @@ from upstash_workflow.workflow_types import Request
 
 if TYPE_CHECKING:
     from upstash_workflow.context.context import WorkflowContext
+    from upstash_workflow.asyncio.context.context import (
+        WorkflowContext as AsyncWorkflowContext,
+    )
 
 _logger = logging.getLogger(__name__)
 
 
-async def trigger_first_invocation(
-    workflow_context: WorkflowContext,
+def trigger_first_invocation(
+    workflow_context: Union[WorkflowContext, AsyncWorkflowContext],
     retries: int,
 ):
     headers = get_headers(
@@ -46,39 +50,75 @@ async def trigger_first_invocation(
         retries,
     )["headers"]
 
-    await workflow_context.qstash_client.message.publish_json(
+    result = workflow_context.qstash_client.message.publish_json(
         url=workflow_context.url,
         body=workflow_context.request_payload,
         headers=headers,
     )
 
+    if iscoroutine(result):
 
-async def trigger_route_function(
-    on_step: Callable[[], Awaitable[None]], on_cleanup: Callable[[], Awaitable[None]]
+        async def wrapper():
+            await result
+
+        return wrapper()
+
+    return result
+
+
+def trigger_route_function(
+    on_step: Union[Callable[[], None], Callable[[], Awaitable[None]]],
+    on_cleanup: Union[Callable[[], None], Callable[[], Awaitable[None]]],
 ):
+    if iscoroutinefunction(on_step) or iscoroutinefunction(on_cleanup):
+
+        async def wrapper():
+            try:
+                await on_step()
+                await on_cleanup()
+            except Exception as error:
+                if isinstance(error, WorkflowAbort):
+                    return
+                raise error
+
+        return wrapper()
+
     try:
-        # When onStep completes successfully, it throws WorkflowAbort
-        # indicating that the step has been successfully executed.
-        # This ensures that onCleanup is only called when no exception is thrown.
-        await on_step()
-        await on_cleanup()
+        on_step()
+        on_cleanup()
     except Exception as error:
         if isinstance(error, WorkflowAbort):
             return
         raise error
 
 
-async def trigger_workflow_delete(
+def trigger_workflow_delete(
+    client: Union[httpx.AsyncClient, httpx.Client],
+    workflow_context: Union[WorkflowContext, AsyncWorkflowContext],
+    cancel=False,
+):
+    return client.delete(
+        f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
+        headers={
+            "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN', '')}"
+        },
+    )
+
+
+def trigger_workflow_delete_sync(
     workflow_context: WorkflowContext,
     cancel=False,
 ):
+    with httpx.Client() as client:
+        trigger_workflow_delete(client, workflow_context, cancel)
+
+
+async def trigger_workflow_delete_async(
+    workflow_context: AsyncWorkflowContext,
+    cancel=False,
+):
     async with httpx.AsyncClient() as client:
-        await client.delete(
-            f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
-            headers={
-                "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN', '')}"
-            },
-        )
+        await trigger_workflow_delete(client, workflow_context, cancel)
 
 
 def recreate_user_headers(headers: dict) -> dict:
@@ -99,13 +139,12 @@ def recreate_user_headers(headers: dict) -> dict:
     return filtered_headers
 
 
-async def handle_third_party_call_result(
+def handle_third_party_call_result(
     request: Request,
     request_payload: str,
-    client: AsyncQStash,
     workflow_url: str,
     retries: int,
-):
+) -> Generator:
     try:
         if request.headers and request.headers.get("Upstash-Workflow-Callback"):
             if request_payload:
@@ -127,7 +166,8 @@ async def handle_third_party_call_result(
                     f'Error Message:\n{base64.b64decode(callback_message.get("body", "")).decode()}'
                 )
 
-                return "call-will-retry"
+                yield "call-will-retry"
+                return
 
             headers = request.headers
             workflow_run_id = headers.get(WORKFLOW_ID_HEADER)
@@ -192,15 +232,16 @@ async def handle_third_party_call_result(
                 "concurrent": int(concurrent_str),
             }
 
-            result = await client.message.publish_json(
-                headers=request_headers,
-                body=call_result_step,
-                url=workflow_url,
-            )
+            yield {
+                "headers": request_headers,
+                "body": call_result_step,
+                "url": workflow_url,
+            }
 
-            return "is-call-return"
+            yield "is-call-return"
+            return
 
-        return "continue-workflow"
+        yield "continue-workflow"
 
     except Exception as error:
         is_call_return = request.headers and request.headers.get(
@@ -295,7 +336,7 @@ def get_headers(
     return {"headers": base_headers}
 
 
-async def verify_request(
+def verify_request(
     body: str, signature: Union[str, None], verifier: Optional[Receiver]
 ):
     if not verifier:

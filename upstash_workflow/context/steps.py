@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
-import asyncio
+from collections.abc import Generator
 from upstash_workflow.error import WorkflowError
 from typing import Optional, Awaitable, Union, Callable, cast, Dict, Any, TypeVar
-from inspect import isawaitable
 from upstash_workflow.types import StepType, Step, HTTPMethods
 
 TResult = TypeVar("TResult")
@@ -23,7 +22,7 @@ class BaseLazyStep(ABC):
         pass
 
     @abstractmethod
-    async def get_result_step(self, concurrent, step_id) -> Step:
+    def get_result_step(self, concurrent, step_id) -> Generator:
         pass
 
 
@@ -48,12 +47,10 @@ class LazyFunctionStep(BaseLazyStep):
             target_step=target_step,
         )
 
-    async def get_result_step(self, concurrent: int, step_id: int) -> Step:
-        result = self.step_function()
-        if isawaitable(result):
-            result = await result
+    def get_result_step(self, concurrent: int, step_id: int) -> Generator:
+        result = yield self.step_function()
 
-        return Step(
+        yield Step(
             step_id=step_id,
             step_name=self.step_name,
             step_type=self.step_type,
@@ -78,8 +75,8 @@ class LazySleepStep(BaseLazyStep):
             target_step=target_step,
         )
 
-    async def get_result_step(self, concurrent: int, step_id: int) -> Step:
-        return Step(
+    def get_result_step(self, concurrent: int, step_id: int) -> Generator:
+        yield Step(
             step_id=step_id,
             step_name=self.step_name,
             step_type=self.step_type,
@@ -117,8 +114,8 @@ class LazyCallStep(BaseLazyStep):
             target_step=target_step,
         )
 
-    async def get_result_step(self, concurrent: int, step_id: int) -> Step:
-        return Step(
+    def get_result_step(self, concurrent: int, step_id: int) -> Generator:
+        yield Step(
             step_id=step_id,
             step_name=self.step_name,
             step_type=self.step_type,

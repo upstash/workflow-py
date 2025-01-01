@@ -1,26 +1,22 @@
 import os
 import json
 import logging
-from typing import Optional, Callable, Dict, Union, cast, TypeVar, Tuple, List
-from qstash import QStash, Receiver
+from typing import Optional, Callable, Awaitable, Dict, Union, cast, TypeVar
+from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
-from upstash_workflow.workflow_parser import (
-    get_payload,
-    validate_request,
-    parse_request,
-)
+from upstash_workflow.workflow_parser import get_payload
 from upstash_workflow.workflow_requests import (
-    verify_request,
     recreate_user_headers,
     trigger_first_invocation,
     trigger_route_function,
-    trigger_workflow_delete_sync,
+    trigger_workflow_delete_async,
     handle_third_party_call_result,
 )
-from upstash_workflow.serve.options import process_options, determine_urls
+from upstash_workflow.serve.options import process_options
 from upstash_workflow.error import format_workflow_error
-from upstash_workflow.context.context import WorkflowContext
-from upstash_workflow.types import FinishCondition, Step
+from upstash_workflow.asyncio.context.context import WorkflowContext
+from upstash_workflow.types import FinishCondition
+from upstash_workflow.serve.serve import process_request
 
 _logger = logging.getLogger(__name__)
 
@@ -30,9 +26,9 @@ TResponse = TypeVar("TResponse")
 
 
 def serve(
-    route_function: Callable[[WorkflowContext], None],
+    route_function: Callable[[WorkflowContext], Awaitable[None]],
     *,
-    qstash_client: Optional[QStash] = None,
+    qstash_client: Optional[AsyncQStash] = None,
     on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
@@ -40,8 +36,8 @@ def serve(
     env: Optional[Union[Dict[str, Optional[str]], os._Environ]] = None,
     retries: Optional[int] = None,
     url: Optional[str] = None,
-) -> Dict[str, Callable[[TRequest], TResponse]]:
-    qstash_client = qstash_client or QStash(
+) -> Dict[str, Callable[[TRequest], Awaitable[TResponse]]]:
+    qstash_client = qstash_client or AsyncQStash(
         cast(str, (env if env is not None else os.environ).get("QSTASH_TOKEN", "")),
     )
 
@@ -63,8 +59,8 @@ def serve(
         url,
     )
 
-    def _handler(request: TRequest):
-        request_payload = get_payload(request) or ""
+    async def _handler(request: TRequest):
+        request_payload = (await get_payload(request)) or ""
 
         (
             workflow_url,
@@ -77,7 +73,7 @@ def serve(
             receiver,
             base_url,
             url,
-            cast(str, request_payload),
+            request_payload,
         )
 
         workflow_context = WorkflowContext(
@@ -104,7 +100,7 @@ def serve(
         call_return_check = next(generator_handle_third_party_call_result)
 
         if isinstance(call_return_check, dict):
-            qstash_client.message.publish_json(
+            await qstash_client.message.publish_json(
                 headers=call_return_check["headers"],
                 body=call_return_check["body"],
                 url=call_return_check["url"],
@@ -113,58 +109,26 @@ def serve(
 
         if call_return_check == "continue-workflow":
             if is_first_invocation:
-                trigger_first_invocation(workflow_context, retries)
+                await trigger_first_invocation(workflow_context, retries)
             else:
 
-                def on_step():
-                    return route_function(workflow_context)
+                async def on_step():
+                    return await route_function(workflow_context)
 
-                def on_cleanup():
-                    trigger_workflow_delete_sync(workflow_context)
+                async def on_cleanup():
+                    await trigger_workflow_delete_async(workflow_context)
 
-                trigger_route_function(on_step=on_step, on_cleanup=on_cleanup)
+                await trigger_route_function(on_step=on_step, on_cleanup=on_cleanup)
 
             return on_step_finish(workflow_context.workflow_run_id, "success")
 
         return on_step_finish("no-workflow-id", "fromCallback")
 
-    def _safe_handler(request: TRequest):
+    async def _safe_handler(request: TRequest):
         try:
-            return _handler(request)
+            return await _handler(request)
         except Exception as error:
             _logger.exception(error)
             return Response(json.dumps(format_workflow_error(error)), status=500)
 
     return {"handler": _safe_handler}
-
-
-def process_request(
-    request: Request,
-    receiver: Optional[Receiver],
-    base_url: Optional[str],
-    url: Optional[str],
-    request_payload: str,
-) -> Tuple[str, bool, str, str, List[Step]]:
-    workflow_url = determine_urls(cast(Request, request), url, base_url)
-    verify_request(
-        request_payload,
-        None if not request.headers else request.headers.get("upstash-signature"),
-        receiver,
-    )
-
-    validate_request_response = validate_request(request)
-    is_first_invocation = validate_request_response.is_first_invocation
-    workflow_run_id = validate_request_response.workflow_run_id
-
-    parse_request_response = parse_request(request_payload, is_first_invocation)
-
-    raw_initial_payload = parse_request_response.raw_initial_payload
-    steps = parse_request_response.steps
-
-    return (
-        workflow_url,
-        is_first_invocation,
-        raw_initial_payload,
-        workflow_run_id,
-        steps,
-    )

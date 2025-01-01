@@ -1,5 +1,6 @@
 import json
-from typing import Optional
+from typing import Optional, Awaitable, Union
+from asyncio import iscoroutinefunction
 from upstash_workflow.utils import nanoid, decode_base64
 from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
@@ -12,14 +13,24 @@ from upstash_workflow.types import Step, ValidateRequestResponse, ParseRequestRe
 from upstash_workflow.workflow_types import Request
 
 
-async def get_payload(request: Request):
+def get_payload(request: Request):
+    if iscoroutinefunction(request.json):
+
+        async def wrapper():
+            try:
+                return json.dumps(await request.json())
+            except Exception:
+                return None
+
+        return wrapper()
+
     try:
-        return json.dumps(await request.json())
+        return json.dumps(request.json())
     except Exception:
         return None
 
 
-async def parse_payload(raw_payload):
+def parse_payload(raw_payload):
     raw_steps = [step for step in json.loads(raw_payload)]
 
     encoded_initial_payload, *encoded_steps = raw_steps
@@ -104,7 +115,7 @@ def validate_request(request: Request) -> ValidateRequestResponse:
     )
 
 
-async def parse_request(request_payload: Optional[str], is_first_invocation: bool):
+def parse_request(request_payload: Optional[str], is_first_invocation: bool):
     if is_first_invocation:
         return ParseRequestResponse(
             raw_initial_payload=(request_payload or ""),
@@ -114,7 +125,7 @@ async def parse_request(request_payload: Optional[str], is_first_invocation: boo
         if not request_payload:
             raise WorkflowError("Only first call can have an empty body")
 
-        parsed_data = await parse_payload(request_payload)
+        parsed_data = parse_payload(request_payload)
         raw_initial_payload = parsed_data["raw_initial_payload"]
         steps = parsed_data["steps"]
 

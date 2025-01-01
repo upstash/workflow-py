@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Union, Literal, cast, Any
+from collections.abc import Generator
 import json
 from qstash.message import BatchJsonRequest
 from upstash_workflow.constants import NO_CONCURRENCY
@@ -10,11 +11,16 @@ from upstash_workflow.context.steps import BaseLazyStep, LazyCallStep
 
 if TYPE_CHECKING:
     from upstash_workflow.context.context import WorkflowContext
+    from upstash_workflow.asyncio.context.context import (
+        WorkflowContext as AsyncWorkflowContext,
+    )
 
 
 class AutoExecutor:
-    def __init__(self, context: WorkflowContext, steps: List[Step]):
-        self.context: WorkflowContext = context
+    def __init__(
+        self, context: Union[WorkflowContext, AsyncWorkflowContext], steps: List[Step]
+    ):
+        self.context: Union[WorkflowContext, AsyncWorkflowContext] = context
         self.steps: List[Step] = steps
         self.non_plan_step_count: int = len(
             [
@@ -27,23 +33,40 @@ class AutoExecutor:
         self.plan_step_count: int = 0
         self.executing_step: Union[str, Literal[False]] = False
 
-    async def add_step(self, step_info: BaseLazyStep):
+    def add_step(self, step_info: BaseLazyStep) -> Generator:
         self.step_count += 1
-        return await self.run_single(step_info)
+        generator_run_single = self.run_single(step_info)
+        if step_info.step_type == "Run":
+            result = yield next(generator_run_single)
+            yield generator_run_single.send(result)
+        else:
+            yield next(generator_run_single)
+        yield next(generator_run_single)
 
-    async def run_single(self, lazy_step: BaseLazyStep):
+    def run_single(self, lazy_step: BaseLazyStep) -> Generator:
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
             validate_step(lazy_step, step)
-            return step.out
+            yield {"step_out": step.out}
+            return
+        generator_get_result_step = lazy_step.get_result_step(
+            NO_CONCURRENCY, self.step_count
+        )
+        if lazy_step.step_type == "Run":
+            result = yield next(generator_get_result_step)
+            result_step = generator_get_result_step.send(result)
+        else:
+            result_step = next(generator_get_result_step)
+        generator_submit_steps_to_qstash = self.submit_steps_to_qstash(
+            [result_step], [lazy_step]
+        )
+        yield next(generator_submit_steps_to_qstash)
+        next(generator_submit_steps_to_qstash)
+        yield result_step.out
 
-        result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
-        await self.submit_steps_to_qstash([cast(Step, result_step)], [lazy_step])
-        return result_step.out
-
-    async def submit_steps_to_qstash(
+    def submit_steps_to_qstash(
         self, steps: List[Step], lazy_steps: List[BaseLazyStep]
-    ):
+    ) -> Generator:
         if not steps:
             raise WorkflowError(
                 f"Unable to submit steps to QStash. Provided list is empty. Current step: {self.step_count}"
@@ -103,7 +126,8 @@ class AutoExecutor:
                     )
                 )
             )
-        response = await self.context.qstash_client.message.batch_json(batch_requests)
+        yield batch_requests
+
         raise WorkflowAbort(steps[0].step_name, steps[0])
 
 
