@@ -2,7 +2,7 @@ import json
 import os
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.context.auto_executor import AutoExecutor
-from upstash_workflow.context.steps import LazyFunctionStep, LazySleepStep
+from upstash_workflow.context.steps import LazyFunctionStep, LazySleepStep, LazyCallStep
 
 
 class WorkflowContext:
@@ -36,6 +36,28 @@ class WorkflowContext:
 
     async def sleep(self, step_name, duration):
         await self._add_step(LazySleepStep(step_name, duration))
+
+    async def call(
+        self,
+        step_name,
+        *,
+        url,
+        method="GET",
+        body=None,
+        headers=None,
+        retries=0,
+        timeout=None,
+    ):
+        headers = headers or {}
+
+        result = await self._add_step(
+            LazyCallStep(step_name, url, method, body, headers, retries, timeout)
+        )
+
+        try:
+            return {**result, "body": json.loads(result["body"])}
+        except:
+            return result
 
     async def _add_step(self, step):
         return await self._executor.add_step(step)

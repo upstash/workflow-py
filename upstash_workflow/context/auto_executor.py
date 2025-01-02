@@ -2,6 +2,7 @@ import json
 from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
 from upstash_workflow.workflow_requests import get_headers
+from upstash_workflow.context.steps import LazyCallStep
 
 
 class AutoExecutor:
@@ -26,17 +27,18 @@ class AutoExecutor:
             return step["out"]
 
         result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
-        await self.submit_steps_to_qstash([result_step])
+        await self.submit_steps_to_qstash([result_step], [lazy_step])
         return result_step["out"]
 
-    async def submit_steps_to_qstash(self, steps):
+    async def submit_steps_to_qstash(self, steps, lazy_steps):
         if not steps:
             raise QStashWorkflowError(
                 f"Unable to submit steps to QStash. Provided list is empty. Current step: {self.step_count}"
             )
 
         batch_requests = []
-        for single_step in steps:
+        for index, single_step in enumerate(steps):
+            lazy_step = lazy_steps[index]
             headers = get_headers(
                 "false",
                 self.context.workflow_run_id,
@@ -44,6 +46,8 @@ class AutoExecutor:
                 self.context.headers,
                 single_step,
                 self.context.retries,
+                lazy_step.retries if isinstance(lazy_step, LazyCallStep) else None,
+                lazy_step.timeout if isinstance(lazy_step, LazyCallStep) else None,
             )
 
             will_wait = (
@@ -56,6 +60,13 @@ class AutoExecutor:
             batch_requests.append(
                 {
                     "headers": headers["headers"],
+                    "method": single_step["callMethod"],
+                    "body": single_step["callBody"],
+                    "url": single_step["callUrl"],
+                }
+                if single_step.get("callUrl", None)
+                else {
+                    "headers": headers["headers"],
                     "method": "POST",
                     "body": single_step,
                     "url": self.context.url,
@@ -65,7 +76,6 @@ class AutoExecutor:
                     "delay": single_step.get("sleep_for", None) if will_wait else None,
                 }
             )
-
         response = await self.context.qstash_client.message.batch_json(batch_requests)
         raise QStashWorkflowAbort(steps[0]["stepName"], steps[0])
 
@@ -74,11 +84,11 @@ def validate_step(lazy_step, step_from_request):
     if lazy_step.step_name != step_from_request["stepName"]:
         raise QStashWorkflowError(
             f"Incompatible step name. Expected '{lazy_step.step_name}', "
-            f"got '{step_from_request["stepName"]}' from the request"
+            f"got '{step_from_request['stepName']}' from the request"
         )
 
     if lazy_step.step_type != step_from_request["stepType"]:
         raise QStashWorkflowError(
             f"Incompatible step type. Expected '{lazy_step.step_type}', "
-            f"got '{step_from_request["stepType"]}' from the request"
+            f"got '{step_from_request['stepType']}' from the request"
         )

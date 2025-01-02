@@ -41,3 +41,34 @@ async def sleep(context):
         print("step 3 input", result2, "output", output)
 
     await context.run("step3", _step3)
+
+
+@app.post("/get-data")
+async def get_data():
+    return {"message": "get data response"}
+
+
+@serve.post("/call")
+async def call(context):
+    input = context.request_payload
+
+    async def _step1():
+        output = some_work(input)
+        print("step 1 input", input, "output", output)
+        return output
+
+    result1 = await context.run("step1", _step1)
+
+    response = await context.call(
+        "get-data",
+        url=f"{context.env.get('UPSTASH_WORKFLOW_URL', 'http://localhost:8000')}/get-data",
+        method="POST",
+        body={"message": result1},
+    )
+
+    async def _step2():
+        output = some_work(response)
+        print("step 2 input", response, "output", output)
+        return output
+
+    await context.run("step2", _step2)
