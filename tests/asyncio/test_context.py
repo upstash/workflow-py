@@ -1,7 +1,7 @@
 import pytest
 from qstash import AsyncQStash
 from upstash_workflow.context.context import WorkflowContext
-from upstash_workflow.error import QStashWorkflowAbort
+from upstash_workflow.error import WorkflowAbort
 from tests.asyncio.utils import (
     mock_qstash_server,
     RequestFields,
@@ -35,7 +35,7 @@ async def test_workflow_headers(qstash_client):
     )
 
     async def execute():
-        with pytest.raises(QStashWorkflowAbort) as excinfo:
+        with pytest.raises(WorkflowAbort) as excinfo:
             await context.call(
                 "my-step",
                 url=url,
