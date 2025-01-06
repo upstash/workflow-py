@@ -29,7 +29,6 @@ async def test_workflow_headers(qstash_client):
         steps=[],
         url=WORKFLOW_ENDPOINT,
         initial_payload="my-payload",
-        raw_initial_payload=None,
         env=None,
         retries=None,
     )
