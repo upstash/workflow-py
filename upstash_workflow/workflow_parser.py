@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Optional, List, Tuple
 from upstash_workflow.utils import nanoid, decode_base64
 from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
@@ -8,18 +8,23 @@ from upstash_workflow.constants import (
     NO_CONCURRENCY,
 )
 from upstash_workflow.error import WorkflowError
-from upstash_workflow.types import Step, ValidateRequestResponse, ParseRequestResponse
+from upstash_workflow.types import (
+    Step,
+    DefaultStep,
+    ValidateRequestResponse,
+    ParseRequestResponse,
+)
 from upstash_workflow.workflow_types import Request
 
 
-async def get_payload(request: Request):
+async def get_payload(request: Request) -> Optional[str]:
     try:
         return json.dumps(await request.json())
     except Exception:
         return None
 
 
-async def parse_payload(raw_payload):
+async def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
     raw_steps = [step for step in json.loads(raw_payload)]
 
     encoded_initial_payload, *encoded_steps = raw_steps
@@ -56,7 +61,7 @@ async def parse_payload(raw_payload):
 
     all_steps = [initial_step] + other_steps
 
-    parsed_steps = []
+    parsed_steps: List[DefaultStep] = []
     for step in all_steps:
         parsed_steps.append(
             Step(
@@ -68,7 +73,7 @@ async def parse_payload(raw_payload):
             )
         )
 
-    return {"raw_initial_payload": raw_initial_payload, "steps": parsed_steps}
+    return raw_initial_payload, parsed_steps
 
 
 def validate_request(request: Request) -> ValidateRequestResponse:
@@ -104,7 +109,9 @@ def validate_request(request: Request) -> ValidateRequestResponse:
     )
 
 
-async def parse_request(request_payload: Optional[str], is_first_invocation: bool):
+async def parse_request(
+    request_payload: Optional[str], is_first_invocation: bool
+) -> ParseRequestResponse:
     if is_first_invocation:
         return ParseRequestResponse(
             raw_initial_payload=(request_payload or ""),
@@ -114,9 +121,7 @@ async def parse_request(request_payload: Optional[str], is_first_invocation: boo
         if not request_payload:
             raise WorkflowError("Only first call can have an empty body")
 
-        parsed_data = await parse_payload(request_payload)
-        raw_initial_payload = parsed_data["raw_initial_payload"]
-        steps = parsed_data["steps"]
+        raw_initial_payload, steps = await parse_payload(request_payload)
 
         return ParseRequestResponse(
             raw_initial_payload=raw_initial_payload, steps=steps

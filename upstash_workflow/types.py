@@ -1,5 +1,16 @@
 import os
-from typing import Callable, Literal, Optional, Dict, Union, List, TypeVar, Generic
+from typing import (
+    Callable,
+    Literal,
+    Optional,
+    Dict,
+    Union,
+    List,
+    TypeVar,
+    Generic,
+    Any,
+    TypedDict,
+)
 from qstash import AsyncQStash, Receiver
 from dataclasses import dataclass
 
@@ -23,7 +34,7 @@ class WorkflowServeOptions(Generic[TInitialPayload, TResponse]):
     initial_payload_parser: Callable[[str], TInitialPayload]
     receiver: Optional[Receiver]
     base_url: Optional[str]
-    env: Union[Dict[str, Optional[str]], os._Environ]
+    env: Dict[str, Optional[str]]
     retries: int
     url: Optional[str]
 
@@ -73,6 +84,9 @@ class Step(Generic[TResult, TBody]):
     call_url: Optional[str] = None
 
 
+DefaultStep = Step[Any, Any]
+
+
 @dataclass
 class ValidateRequestResponse:
     is_first_invocation: bool
@@ -82,4 +96,23 @@ class ValidateRequestResponse:
 @dataclass
 class ParseRequestResponse:
     raw_initial_payload: str
-    steps: List[Step]
+    steps: List[DefaultStep]
+
+
+@dataclass
+class HeadersResponse:
+    headers: Dict[str, str]
+    timeout_headers: Optional[Dict[str, List[str]]] = None
+
+
+@dataclass
+class CallResponse(Generic[TResult]):
+    status: int
+    body: TResult
+    header: Dict[str, List[str]]
+
+
+class CallResponseDict(TypedDict):
+    status: int
+    body: Any
+    header: Dict[str, List[str]]
