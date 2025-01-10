@@ -12,6 +12,7 @@ from typing import (
     Union,
     cast,
     TypeVar,
+    Dict,
 )
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.error import WorkflowError, WorkflowAbort
@@ -24,7 +25,7 @@ from upstash_workflow.constants import (
     DEFAULT_CONTENT_TYPE,
     WORKFLOW_FEATURE_HEADER,
 )
-from upstash_workflow.types import StepTypes, Step
+from upstash_workflow.types import StepTypes, DefaultStep, HeadersResponse
 from upstash_workflow.workflow_types import Request
 
 if TYPE_CHECKING:
@@ -32,11 +33,13 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+TInitialPayload = TypeVar("TInitialPayload")
+
 
 async def trigger_first_invocation(
-    workflow_context: WorkflowContext,
+    workflow_context: WorkflowContext[TInitialPayload],
     retries: int,
-):
+) -> None:
     headers = get_headers(
         "true",
         workflow_context.workflow_run_id,
@@ -44,7 +47,7 @@ async def trigger_first_invocation(
         workflow_context.headers,
         None,
         retries,
-    )["headers"]
+    ).headers
 
     await workflow_context.qstash_client.message.publish_json(
         url=workflow_context.url,
@@ -55,7 +58,7 @@ async def trigger_first_invocation(
 
 async def trigger_route_function(
     on_step: Callable[[], Awaitable[None]], on_cleanup: Callable[[], Awaitable[None]]
-):
+) -> None:
     try:
         # When onStep completes successfully, it throws WorkflowAbort
         # indicating that the step has been successfully executed.
@@ -69,9 +72,9 @@ async def trigger_route_function(
 
 
 async def trigger_workflow_delete(
-    workflow_context: WorkflowContext,
-    cancel=False,
-):
+    workflow_context: WorkflowContext[TInitialPayload],
+    cancel: Optional[bool] = False,
+) -> None:
     async with httpx.AsyncClient() as client:
         await client.delete(
             f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
@@ -81,7 +84,7 @@ async def trigger_workflow_delete(
         )
 
 
-def recreate_user_headers(headers: dict) -> dict:
+def recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
     filtered_headers = {}
 
     for header, value in headers.items():
@@ -105,7 +108,7 @@ async def handle_third_party_call_result(
     client: AsyncQStash,
     workflow_url: str,
     retries: int,
-):
+) -> Literal["call-will-retry", "is-call-return", "continue-workflow"]:
     try:
         if request.headers and request.headers.get("Upstash-Workflow-Callback"):
             if request_payload:
@@ -157,16 +160,6 @@ async def handle_third_party_call_result(
                         "content_type": content_type,
                     }
                 )
-                info = json.dumps(
-                    {
-                        "workflow_run_id": workflow_run_id,
-                        "step_id_str": step_id_str,
-                        "step_name": step_name,
-                        "step_type": step_type,
-                        "concurrent_str": concurrent_str,
-                        "content_type": content_type,
-                    }
-                )
                 raise ValueError(
                     f"Missing info in callback message source header: {info}"
                 )
@@ -186,7 +179,7 @@ async def handle_third_party_call_result(
                 user_headers,
                 None,
                 retries,
-            )["headers"]
+            ).headers
 
             call_response = {
                 "status": callback_message["status"],
@@ -225,12 +218,12 @@ def get_headers(
     init_header_value: Literal["true", "false"],
     workflow_run_id: str,
     workflow_url: str,
-    user_headers: Optional[dict] = None,
-    step: Optional[Step] = None,
+    user_headers: Optional[Dict[str, str]] = None,
+    step: Optional[DefaultStep] = None,
     retries: Optional[int] = None,
     call_retries: Optional[int] = None,
     call_timeout: Optional[Union[int, str]] = None,
-):
+) -> HeadersResponse:
     base_headers = {
         WORKFLOW_INIT_HEADER: init_header_value,
         WORKFLOW_ID_HEADER: workflow_run_id,
@@ -280,8 +273,8 @@ def get_headers(
             for header, value in step.call_headers.items()
         }
 
-        return {
-            "headers": {
+        return HeadersResponse(
+            headers={
                 **base_headers,
                 **forwarded_headers,
                 "Upstash-Callback": workflow_url,
@@ -300,14 +293,14 @@ def get_headers(
                 "Upstash-Callback-Forward-Upstash-Workflow-ContentType": content_type,
                 "Upstash-Workflow-CallType": "toCallback",
             }
-        }
+        )
 
-    return {"headers": base_headers}
+    return HeadersResponse(headers=base_headers)
 
 
 async def verify_request(
     body: str, signature: Union[str, None], verifier: Optional[Receiver]
-):
+) -> None:
     if not verifier:
         return
 

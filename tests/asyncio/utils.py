@@ -30,10 +30,10 @@ class RequestFields:
 
 
 async def mock_qstash_server(
-    execute: Callable,
+    execute: Callable[[], Any],
     response_fields: ResponseFields,
     receives_request: Union[RequestFields, bool],
-):
+) -> None:
     should_be_called = bool(receives_request)
     called = False
 

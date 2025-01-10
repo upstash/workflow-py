@@ -12,12 +12,12 @@ from tests.asyncio.utils import (
 
 
 @pytest.fixture
-def qstash_client():
+def qstash_client() -> AsyncQStash:
     return AsyncQStash("mock-token", base_url=MOCK_QSTASH_SERVER_URL)
 
 
 @pytest.mark.asyncio
-async def test_workflow_headers(qstash_client):
+async def test_workflow_headers(qstash_client: AsyncQStash) -> None:
     url = "https://some-website.com"
     body = "request-body"
     retries = 10
@@ -33,7 +33,7 @@ async def test_workflow_headers(qstash_client):
         retries=None,
     )
 
-    async def execute():
+    async def execute() -> None:
         with pytest.raises(WorkflowAbort) as excinfo:
             await context.call(
                 "my-step",

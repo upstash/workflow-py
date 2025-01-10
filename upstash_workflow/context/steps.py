@@ -1,15 +1,24 @@
 from abc import ABC, abstractmethod
 import asyncio
 from upstash_workflow.error import WorkflowError
-from typing import Optional, Awaitable, Union, Callable, cast, Dict, Any, TypeVar
+from typing import (
+    Optional,
+    Awaitable,
+    Union,
+    Callable,
+    Dict,
+    Any,
+    TypeVar,
+    Generic,
+)
 from inspect import isawaitable
-from upstash_workflow.types import StepType, Step, HTTPMethods
+from upstash_workflow.types import StepType, Step, DefaultStep, HTTPMethods
 
 TResult = TypeVar("TResult")
 TBody = TypeVar("TBody")
 
 
-class BaseLazyStep(ABC):
+class BaseLazyStep(ABC, Generic[TResult]):
     def __init__(self, step_name: str):
         if not step_name:
             raise WorkflowError(
@@ -19,15 +28,17 @@ class BaseLazyStep(ABC):
         self.step_type: Optional[StepType] = None
 
     @abstractmethod
-    def get_plan_step(self, concurrent: int, target_step: int) -> Step:
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step[None, Any]:
         pass
 
     @abstractmethod
-    async def get_result_step(self, concurrent, step_id) -> Step:
+    async def get_result_step(
+        self, concurrent: int, step_id: int
+    ) -> Step[TResult, Any]:
         pass
 
 
-class LazyFunctionStep(BaseLazyStep):
+class LazyFunctionStep(BaseLazyStep[TResult]):
     def __init__(
         self,
         step_name: str,
@@ -39,7 +50,7 @@ class LazyFunctionStep(BaseLazyStep):
         ] = step_function
         self.step_type: StepType = "Run"
 
-    def get_plan_step(self, concurrent: int, target_step: int) -> Step:
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step[None, Any]:
         return Step(
             step_id=0,
             step_name=self.step_name,
@@ -48,12 +59,14 @@ class LazyFunctionStep(BaseLazyStep):
             target_step=target_step,
         )
 
-    async def get_result_step(self, concurrent: int, step_id: int) -> Step:
+    async def get_result_step(
+        self, concurrent: int, step_id: int
+    ) -> Step[TResult, Any]:
         result = self.step_function()
         if isawaitable(result):
             result = await result
 
-        return Step(
+        return Step[TResult, Any](
             step_id=step_id,
             step_name=self.step_name,
             step_type=self.step_type,
@@ -62,13 +75,13 @@ class LazyFunctionStep(BaseLazyStep):
         )
 
 
-class LazySleepStep(BaseLazyStep):
+class LazySleepStep(BaseLazyStep[Any]):
     def __init__(self, step_name: str, sleep: Union[int, str]):
         super().__init__(step_name)
         self.sleep: Union[int, str] = sleep
         self.step_type: StepType = "SleepFor"
 
-    def get_plan_step(self, concurrent: int, target_step: int) -> Step:
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step[None, Any]:
         return Step(
             step_id=0,
             step_name=self.step_name,
@@ -78,7 +91,7 @@ class LazySleepStep(BaseLazyStep):
             target_step=target_step,
         )
 
-    async def get_result_step(self, concurrent: int, step_id: int) -> Step:
+    async def get_result_step(self, concurrent: int, step_id: int) -> DefaultStep:
         return Step(
             step_id=step_id,
             step_name=self.step_name,
@@ -88,7 +101,7 @@ class LazySleepStep(BaseLazyStep):
         )
 
 
-class LazyCallStep(BaseLazyStep):
+class LazyCallStep(BaseLazyStep[TResult]):
     def __init__(
         self,
         step_name: str,
@@ -108,7 +121,7 @@ class LazyCallStep(BaseLazyStep):
         self.timeout: Optional[Union[int, str]] = timeout
         self.step_type: StepType = "Call"
 
-    def get_plan_step(self, concurrent: int, target_step: int) -> Step:
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step[None, Any]:
         return Step(
             step_id=0,
             step_name=self.step_name,
@@ -117,7 +130,9 @@ class LazyCallStep(BaseLazyStep):
             target_step=target_step,
         )
 
-    async def get_result_step(self, concurrent: int, step_id: int) -> Step:
+    async def get_result_step(
+        self, concurrent: int, step_id: int
+    ) -> Step[TResult, Any]:
         return Step(
             step_id=step_id,
             step_name=self.step_name,

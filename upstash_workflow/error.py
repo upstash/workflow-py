@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Optional, Dict
 from qstash.errors import QStashError
-from upstash_workflow.types import Step
+from upstash_workflow.types import DefaultStep
 
 
 class WorkflowError(QStashError):
@@ -13,11 +13,11 @@ class WorkflowAbort(Exception):
     def __init__(
         self,
         step_name: str,
-        step_info: Optional[Step] = None,
+        step_info: Optional[DefaultStep] = None,
         cancel_workflow: bool = False,
     ) -> None:
         self.step_name: str = step_name
-        self.step_info: Optional[Step] = step_info
+        self.step_info: Optional[DefaultStep] = step_info
         self.cancel_workflow: bool = cancel_workflow
 
         message = (
@@ -31,7 +31,7 @@ class WorkflowAbort(Exception):
         self.name = "WorkflowAbort"
 
 
-def format_workflow_error(error: object):
+def format_workflow_error(error: object) -> Dict[str, str]:
     if isinstance(error, Exception):
         return {"error": error.__class__.__name__, "message": str(error)}
     return {"error": "Error", "message": "An error occurred while executing workflow."}

@@ -2,7 +2,7 @@ import os
 import json
 import re
 import logging
-from typing import Callable, Dict, Optional, cast, Union, TypeVar
+from typing import Callable, Dict, Optional, cast, TypeVar, Match
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
 from upstash_workflow.constants import DEFAULT_RETRIES
@@ -24,11 +24,11 @@ def process_options(
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
     base_url: Optional[str] = None,
-    env: Optional[Union[Dict[str, Optional[str]], os._Environ]] = None,
+    env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
-) -> WorkflowServeOptions:
-    environment = env if env is not None else os.environ
+) -> WorkflowServeOptions[TInitialPayload, TResponse]:
+    environment = env if env is not None else dict(os.environ)
 
     receiver_environment_variables_set = bool(
         environment.get("QSTASH_CURRENT_SIGNING_KEY")
@@ -62,7 +62,7 @@ def process_options(
 
         # Try to parse the payload
         try:
-            return json.loads(initial_request)
+            return cast(TInitialPayload, json.loads(initial_request))
         except json.JSONDecodeError:
             # If parsing fails, return the raw string
             return cast(TInitialPayload, initial_request)
@@ -101,12 +101,12 @@ async def determine_urls(
     request: Request,
     url: Optional[str],
     base_url: Optional[str],
-):
+) -> str:
     initial_workflow_url = str(url if url is not None else request.url)
 
     if base_url:
 
-        def replace_base(match: re.Match) -> str:
+        def replace_base(match: Match[str]) -> str:
             matched_base_url, path = match.groups()
             return base_url + (path or "")
 
@@ -116,9 +116,7 @@ async def determine_urls(
     else:
         workflow_url = initial_workflow_url
 
-    return {
-        "workflow_url": workflow_url,
-    }
+    return workflow_url
 
 
 AUTH_FAIL_MESSAGE = "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run"
