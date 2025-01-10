@@ -1,7 +1,7 @@
-from typing import Callable, Literal, TypeVar, Generic
-from qstash import QStash
-from upstash_workflow.context.context import WorkflowContext
-from upstash_workflow.context.steps import BaseLazyStep
+from typing import Callable, Awaitable, Literal, TypeVar, Generic
+from qstash import AsyncQStash
+from upstash_workflow.asyncio.context.context import WorkflowContext
+from upstash_workflow.asyncio.context.steps import BaseLazyStep
 from upstash_workflow.error import WorkflowAbort
 
 TInitialPayload = TypeVar("TInitialPayload")
@@ -13,20 +13,22 @@ class DisabledWorkflowContext(
 ):
     __disabled_message = "disabled-qstash-worklfow-run"
 
-    def _add_step(self, _step: BaseLazyStep[TResult]) -> TResult:
+    async def _add_step(self, _step: BaseLazyStep[TResult]) -> TResult:
         raise WorkflowAbort(self.__disabled_message)
 
-    def cancel(self) -> None:
+    async def cancel(self) -> None:
         return
 
     @classmethod
-    def try_authentication(
+    async def try_authentication(
         cls,
-        route_function: Callable[[WorkflowContext[TInitialPayload]], None],
+        route_function: Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]],
         context: WorkflowContext[TInitialPayload],
     ) -> Literal["run-ended", "step-found"]:
         disabled_context = DisabledWorkflowContext(
-            qstash_client=QStash(base_url="disabled-client", token="disabled-client"),
+            qstash_client=AsyncQStash(
+                base_url="disabled-client", token="disabled-client"
+            ),
             workflow_run_id=context.workflow_run_id,
             headers=context.headers,
             steps=[],
@@ -37,7 +39,7 @@ class DisabledWorkflowContext(
         )
 
         try:
-            route_function(disabled_context)
+            await route_function(disabled_context)
         except WorkflowAbort as error:
             if error.step_name == cls.__disabled_message:
                 return "step-found"

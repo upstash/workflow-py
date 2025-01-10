@@ -6,10 +6,10 @@ from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.workflow_requests import get_headers
 from upstash_workflow.types import DefaultStep, HTTPMethods
-from upstash_workflow.context.steps import BaseLazyStep, LazyCallStep
+from upstash_workflow.asyncio.context.steps import BaseLazyStep, LazyCallStep
 
 if TYPE_CHECKING:
-    from upstash_workflow.context.context import WorkflowContext
+    from upstash_workflow.asyncio.context.context import WorkflowContext
 
 TResult = TypeVar("TResult")
 
@@ -29,21 +29,21 @@ class AutoExecutor:
         self.plan_step_count: int = 0
         self.executing_step: Union[str, Literal[False]] = False
 
-    def add_step(self, step_info: BaseLazyStep[TResult]) -> TResult:
+    async def add_step(self, step_info: BaseLazyStep[TResult]) -> TResult:
         self.step_count += 1
-        return cast(TResult, self.run_single(step_info))
+        return cast(TResult, await self.run_single(step_info))
 
-    def run_single(self, lazy_step: BaseLazyStep[TResult]) -> Any:
+    async def run_single(self, lazy_step: BaseLazyStep[TResult]) -> Any:
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
             validate_step(lazy_step, step)
             return step.out
 
-        result_step = lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
-        self.submit_steps_to_qstash([result_step], [lazy_step])
+        result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
+        await self.submit_steps_to_qstash([result_step], [lazy_step])
         return result_step.out
 
-    def submit_steps_to_qstash(
+    async def submit_steps_to_qstash(
         self, steps: List[DefaultStep], lazy_steps: List[BaseLazyStep[Any]]
     ) -> None:
         if not steps:
@@ -105,7 +105,7 @@ class AutoExecutor:
                     )
                 )
             )
-        self.context.qstash_client.message.batch_json(batch_requests)
+        await self.context.qstash_client.message.batch_json(batch_requests)
         raise WorkflowAbort(steps[0].step_name, steps[0])
 
 

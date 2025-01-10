@@ -6,15 +6,16 @@ from typing import (
     Union,
     Optional,
     Callable,
+    Awaitable,
     TypeVar,
     Any,
     cast,
     Generic,
 )
-from qstash import QStash
+from qstash import AsyncQStash
 from upstash_workflow.constants import DEFAULT_RETRIES
-from upstash_workflow.context.auto_executor import AutoExecutor
-from upstash_workflow.context.steps import (
+from upstash_workflow.asyncio.context.auto_executor import AutoExecutor
+from upstash_workflow.asyncio.context.steps import (
     LazyFunctionStep,
     LazySleepStep,
     LazySleepUntilStep,
@@ -35,7 +36,7 @@ TResult = TypeVar("TResult")
 class WorkflowContext(Generic[TInitialPayload]):
     def __init__(
         self,
-        qstash_client: QStash,
+        qstash_client: AsyncQStash,
         workflow_run_id: str,
         headers: Dict[str, str],
         steps: List[DefaultStep],
@@ -44,7 +45,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         env: Optional[Dict[str, Optional[str]]] = None,
         retries: Optional[int] = None,
     ):
-        self.qstash_client: QStash = qstash_client
+        self.qstash_client: AsyncQStash = qstash_client
         self.workflow_run_id: str = workflow_run_id
         self._steps: List[DefaultStep] = steps
         self.url: str = url
@@ -54,47 +55,47 @@ class WorkflowContext(Generic[TInitialPayload]):
         self.retries: int = retries or DEFAULT_RETRIES
         self._executor: AutoExecutor = AutoExecutor(self, self._steps)
 
-    def run(
+    async def run(
         self,
         step_name: str,
-        step_function: Union[Callable[[], Any], Callable[[], Any]],
+        step_function: Union[Callable[[], Any], Callable[[], Awaitable[Any]]],
     ) -> Any:
         """
         Executes a workflow step
         ```python
-        def _step1() -> str:
+        async def _step1() -> str:
             return "result"
-        result = context.run("step1", _step1)
+        result = await context.run("step1", _step1)
         ```
 
         :param step_name: name of the step
         :param step_function: step function to be executed
         :return: result of the step function
         """
-        return self._add_step(LazyFunctionStep(step_name, step_function))
+        return await self._add_step(LazyFunctionStep(step_name, step_function))
 
-    def sleep(self, step_name: str, duration: Union[int, str]) -> None:
+    async def sleep(self, step_name: str, duration: Union[int, str]) -> None:
         """
         Stops the execution for the duration provided.
 
         ```python
-        context.sleep("sleep1", 3)  # wait for three seconds
+        await context.sleep("sleep1", 3)  # wait for three seconds
         ```
 
         :param step_name: name of the step
         :param duration: sleep duration in seconds
         :return: None
         """
-        self._add_step(LazySleepStep(step_name, duration))
+        await self._add_step(LazySleepStep(step_name, duration))
 
-    def sleep_until(
+    async def sleep_until(
         self, step_name: str, date_time: Union[datetime.datetime, str, float]
     ) -> None:
         """
         Stops the execution until the date time provided.
 
         ```python
-        context.sleep_until("sleep1", time.time() + 3)  # wait for three seconds
+        await context.sleep_until("sleep1", time.time() + 3)  # wait for three seconds
         ```
 
         :param step_name: name of the step
@@ -108,9 +109,9 @@ class WorkflowContext(Generic[TInitialPayload]):
         else:
             time = date_time.timestamp()
 
-        self._add_step(LazySleepUntilStep(step_name, round(time)))
+        await self._add_step(LazySleepUntilStep(step_name, round(time)))
 
-    def call(
+    async def call(
         self,
         step_name: str,
         *,
@@ -125,7 +126,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         Makes a third party call through QStash in order to make a network call without consuming any runtime.
 
         ```python
-        response = context.call(
+        response = await context.call(
             "post-call-step",
             url="https://www.some-endpoint.com/api",
             method="POST",
@@ -147,7 +148,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         """
         headers = headers or {}
 
-        result = self._add_step(
+        result = await self._add_step(
             LazyCallStep[CallResponseDict](
                 step_name, url, method, body, headers, retries, timeout
             )
@@ -162,5 +163,5 @@ class WorkflowContext(Generic[TInitialPayload]):
         except Exception:
             return cast(CallResponse[Any], result)
 
-    def _add_step(self, step: BaseLazyStep[TResult]) -> TResult:
-        return self._executor.add_step(step)
+    async def _add_step(self, step: BaseLazyStep[TResult]) -> TResult:
+        return await self._executor.add_step(step)

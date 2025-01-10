@@ -17,14 +17,14 @@ from upstash_workflow.types import (
 from upstash_workflow.workflow_types import Request
 
 
-async def get_payload(request: Request) -> Optional[str]:
+def get_payload(request: Request) -> Optional[str]:
     try:
-        return json.dumps(await request.json())
+        return json.dumps(request.json())
     except Exception:
         return None
 
 
-async def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
+def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
     raw_steps = [step for step in json.loads(raw_payload)]
 
     encoded_initial_payload, *encoded_steps = raw_steps
@@ -109,7 +109,7 @@ def validate_request(request: Request) -> ValidateRequestResponse:
     )
 
 
-async def parse_request(
+def parse_request(
     request_payload: Optional[str], is_first_invocation: bool
 ) -> ParseRequestResponse:
     if is_first_invocation:
@@ -121,7 +121,7 @@ async def parse_request(
         if not request_payload:
             raise WorkflowError("Only first call can have an empty body")
 
-        raw_initial_payload, steps = await parse_payload(request_payload)
+        raw_initial_payload, steps = parse_payload(request_payload)
 
         return ParseRequestResponse(
             raw_initial_payload=raw_initial_payload, steps=steps

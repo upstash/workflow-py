@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from typing import Dict
 import time
 from upstash_workflow.fastapi import Serve
-from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow.asyncio.context.context import WorkflowContext
 from upstash_workflow.types import CallResponse
 
 app = FastAPI()

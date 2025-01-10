@@ -10,7 +10,7 @@ from typing import (
     Any,
     TypedDict,
 )
-from qstash import AsyncQStash, Receiver
+from qstash import QStash, Receiver
 from dataclasses import dataclass
 
 
@@ -28,7 +28,7 @@ TResponse = TypeVar("TResponse")
 
 @dataclass
 class WorkflowServeOptions(Generic[TInitialPayload, TResponse]):
-    qstash_client: AsyncQStash
+    qstash_client: QStash
     on_step_finish: Callable[[str, FinishCondition], TResponse]
     initial_payload_parser: Callable[[str], TInitialPayload]
     receiver: Optional[Receiver]

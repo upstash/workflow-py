@@ -1,26 +1,25 @@
 import json
 import logging
-from typing import Optional, Callable, Dict, cast, TypeVar, Any
-from qstash import QStash, Receiver
+from typing import Optional, Callable, Awaitable, Dict, cast, TypeVar, Any
+from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
-from upstash_workflow.workflow_parser import (
+from upstash_workflow.asyncio.workflow_parser import (
     get_payload,
-    validate_request,
-    parse_request,
 )
-from upstash_workflow.workflow_requests import (
-    verify_request,
-    recreate_user_headers,
+from upstash_workflow.workflow_parser import validate_request, parse_request
+from upstash_workflow.asyncio.workflow_requests import (
     trigger_first_invocation,
     trigger_route_function,
     trigger_workflow_delete,
     handle_third_party_call_result,
 )
-from upstash_workflow.serve.options import process_options, determine_urls
+from upstash_workflow.workflow_requests import verify_request, recreate_user_headers
+from upstash_workflow.serve.options import determine_urls
+from upstash_workflow.asyncio.serve.options import process_options
 from upstash_workflow.error import format_workflow_error
-from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow.asyncio.context.context import WorkflowContext
 from upstash_workflow.types import FinishCondition
-from upstash_workflow.serve.authorization import DisabledWorkflowContext
+from upstash_workflow.asyncio.serve.authorization import DisabledWorkflowContext
 
 _logger = logging.getLogger(__name__)
 
@@ -30,9 +29,9 @@ TResponse = TypeVar("TResponse")
 
 
 def serve(
-    route_function: Callable[[WorkflowContext[TInitialPayload]], None],
+    route_function: Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]],
     *,
-    qstash_client: Optional[QStash] = None,
+    qstash_client: Optional[AsyncQStash] = None,
     on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
@@ -40,7 +39,7 @@ def serve(
     env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = None,
     url: Optional[str] = None,
-) -> Dict[str, Callable[[TRequest], TResponse]]:
+) -> Dict[str, Callable[[TRequest], Awaitable[TResponse]]]:
     processed_options = process_options(
         qstash_client=qstash_client,
         on_step_finish=on_step_finish,
@@ -60,10 +59,10 @@ def serve(
     retries = processed_options.retries
     url = processed_options.url
 
-    def _handler(request: TRequest) -> TResponse:
+    async def _handler(request: TRequest) -> TResponse:
         workflow_url = determine_urls(cast(Request, request), url, base_url)
 
-        request_payload = get_payload(request) or ""
+        request_payload = await get_payload(request) or ""
         verify_request(
             request_payload,
             None if not request.headers else request.headers.get("upstash-signature"),
@@ -92,7 +91,7 @@ def serve(
             retries=retries,
         )
 
-        auth_check = DisabledWorkflowContext[Any].try_authentication(
+        auth_check = await DisabledWorkflowContext[Any].try_authentication(
             route_function, workflow_context
         )
 
@@ -106,7 +105,7 @@ def serve(
                 "auth-fail",
             )
 
-        call_return_check = handle_third_party_call_result(
+        call_return_check = await handle_third_party_call_result(
             request,
             raw_initial_payload,
             qstash_client,
@@ -116,24 +115,24 @@ def serve(
 
         if call_return_check == "continue-workflow":
             if is_first_invocation:
-                trigger_first_invocation(workflow_context, retries)
+                await trigger_first_invocation(workflow_context, retries)
             else:
 
-                def on_step() -> None:
-                    route_function(workflow_context)
+                async def on_step() -> None:
+                    await route_function(workflow_context)
 
-                def on_cleanup() -> None:
-                    trigger_workflow_delete(workflow_context)
+                async def on_cleanup() -> None:
+                    await trigger_workflow_delete(workflow_context)
 
-                trigger_route_function(on_step=on_step, on_cleanup=on_cleanup)
+                await trigger_route_function(on_step=on_step, on_cleanup=on_cleanup)
 
             return on_step_finish(workflow_context.workflow_run_id, "success")
 
         return on_step_finish("no-workflow-id", "fromCallback")
 
-    def _safe_handler(request: TRequest) -> TResponse:
+    async def _safe_handler(request: TRequest) -> TResponse:
         try:
-            return _handler(request)
+            return await _handler(request)
         except Exception as error:
             _logger.exception(error)
             return cast(
