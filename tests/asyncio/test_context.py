@@ -1,7 +1,7 @@
 import pytest
 from qstash import AsyncQStash
 from upstash_workflow.context.context import WorkflowContext
-from upstash_workflow.error import QStashWorkflowAbort
+from upstash_workflow.error import WorkflowAbort
 from tests.asyncio.utils import (
     mock_qstash_server,
     RequestFields,
@@ -12,12 +12,12 @@ from tests.asyncio.utils import (
 
 
 @pytest.fixture
-def qstash_client():
+def qstash_client() -> AsyncQStash:
     return AsyncQStash("mock-token", base_url=MOCK_QSTASH_SERVER_URL)
 
 
 @pytest.mark.asyncio
-async def test_workflow_headers(qstash_client):
+async def test_workflow_headers(qstash_client: AsyncQStash) -> None:
     url = "https://some-website.com"
     body = "request-body"
     retries = 10
@@ -29,13 +29,12 @@ async def test_workflow_headers(qstash_client):
         steps=[],
         url=WORKFLOW_ENDPOINT,
         initial_payload="my-payload",
-        raw_initial_payload=None,
         env=None,
         retries=None,
     )
 
-    async def execute():
-        with pytest.raises(QStashWorkflowAbort) as excinfo:
+    async def execute() -> None:
+        with pytest.raises(WorkflowAbort) as excinfo:
             await context.call(
                 "my-step",
                 url=url,

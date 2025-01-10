@@ -1,4 +1,5 @@
 import json
+from typing import Optional, List, Tuple
 from upstash_workflow.utils import nanoid, decode_base64
 from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
@@ -6,17 +7,24 @@ from upstash_workflow.constants import (
     WORKFLOW_ID_HEADER,
     NO_CONCURRENCY,
 )
-from upstash_workflow.error import QStashWorkflowError
+from upstash_workflow.error import WorkflowError
+from upstash_workflow.types import (
+    Step,
+    DefaultStep,
+    ValidateRequestResponse,
+    ParseRequestResponse,
+)
+from upstash_workflow.workflow_types import Request
 
 
-async def get_payload(request):
+async def get_payload(request: Request) -> Optional[str]:
     try:
         return json.dumps(await request.json())
     except Exception:
         return None
 
 
-async def parse_payload(raw_payload):
+async def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
     raw_steps = [step for step in json.loads(raw_payload)]
 
     encoded_initial_payload, *encoded_steps = raw_steps
@@ -53,17 +61,33 @@ async def parse_payload(raw_payload):
 
     all_steps = [initial_step] + other_steps
 
-    return {"raw_initial_payload": raw_initial_payload, "steps": all_steps}
+    parsed_steps: List[DefaultStep] = []
+    for step in all_steps:
+        parsed_steps.append(
+            Step(
+                step_id=step["stepId"],
+                step_name=step["stepName"],
+                step_type=step["stepType"],
+                out=step["out"],
+                concurrent=step["concurrent"],
+            )
+        )
+
+    return raw_initial_payload, parsed_steps
 
 
-def validate_request(request):
+def validate_request(request: Request) -> ValidateRequestResponse:
     # Get version header
-    version_header = request.headers.get(WORKFLOW_PROTOCOL_VERSION_HEADER)
+    version_header = (
+        request.headers.get(WORKFLOW_PROTOCOL_VERSION_HEADER)
+        if request.headers
+        else None
+    )
     is_first_invocation = not version_header
 
     # Verify workflow protocol version if not first invocation
     if not is_first_invocation and version_header != WORKFLOW_PROTOCOL_VERSION:
-        raise QStashWorkflowError(
+        raise WorkflowError(
             f"Incompatible workflow sdk protocol version. "
             f"Expected {WORKFLOW_PROTOCOL_VERSION}, "
             f"got {version_header} from the request."
@@ -73,32 +97,32 @@ def validate_request(request):
     if is_first_invocation:
         workflow_run_id = f"wfr_{nanoid()}"
     else:
-        workflow_run_id = request.headers.get(WORKFLOW_ID_HEADER) or ""
+        workflow_run_id = (
+            request.headers.get(WORKFLOW_ID_HEADER, "") if request.headers else ""
+        )
 
     if not workflow_run_id:
-        raise QStashWorkflowError("Couldn't get workflow id from header")
+        raise WorkflowError("Couldn't get workflow id from header")
 
-    return {
-        "is_first_invocation": is_first_invocation,
-        "workflow_run_id": workflow_run_id,
-    }
+    return ValidateRequestResponse(
+        is_first_invocation=is_first_invocation, workflow_run_id=workflow_run_id
+    )
 
 
-async def parse_request(request_payload, is_first_invocation):
+async def parse_request(
+    request_payload: Optional[str], is_first_invocation: bool
+) -> ParseRequestResponse:
     if is_first_invocation:
-        return {
-            "raw_initial_payload": request_payload or "",
-            "steps": [],
-        }
+        return ParseRequestResponse(
+            raw_initial_payload=(request_payload or ""),
+            steps=[],
+        )
     else:
         if not request_payload:
-            raise QStashWorkflowError("Only first call can have an empty body")
+            raise WorkflowError("Only first call can have an empty body")
 
-        parsed_data = await parse_payload(request_payload)
-        raw_initial_payload = parsed_data["raw_initial_payload"]
-        steps = parsed_data["steps"]
+        raw_initial_payload, steps = await parse_payload(request_payload)
 
-        return {
-            "raw_initial_payload": raw_initial_payload,
-            "steps": steps,
-        }
+        return ParseRequestResponse(
+            raw_initial_payload=raw_initial_payload, steps=steps
+        )

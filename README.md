@@ -21,3 +21,4 @@ bash bootstrap.sh fastapi
 4. Create a .env file with `cp .env.example .env` and fill in the environment variables
 5. Run tests with `poetry run pytest`
 6. Format with `poetry run ruff format .`
+7. Type check with `poetry run mypy --show-error-codes .`

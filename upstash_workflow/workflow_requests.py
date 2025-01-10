@@ -1,8 +1,21 @@
+from __future__ import annotations
 import httpx
 import json
 import base64
 import logging
-from upstash_workflow.error import QStashWorkflowError, QStashWorkflowAbort
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Awaitable,
+    Literal,
+    Optional,
+    Union,
+    cast,
+    TypeVar,
+    Dict,
+)
+from qstash import AsyncQStash, Receiver
+from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.constants import (
     WORKFLOW_INIT_HEADER,
     WORKFLOW_ID_HEADER,
@@ -12,16 +25,21 @@ from upstash_workflow.constants import (
     DEFAULT_CONTENT_TYPE,
     WORKFLOW_FEATURE_HEADER,
 )
-from upstash_workflow.types import StepTypes
+from upstash_workflow.types import StepTypes, DefaultStep, HeadersResponse
+from upstash_workflow.workflow_types import Request
+
+if TYPE_CHECKING:
+    from upstash_workflow.context.context import WorkflowContext
 
 _logger = logging.getLogger(__name__)
 
+TInitialPayload = TypeVar("TInitialPayload")
+
 
 async def trigger_first_invocation(
-    workflow_context,
-    retries,
-    env,
-):
+    workflow_context: WorkflowContext[TInitialPayload],
+    retries: int,
+) -> None:
     headers = get_headers(
         "true",
         workflow_context.workflow_run_id,
@@ -29,7 +47,7 @@ async def trigger_first_invocation(
         workflow_context.headers,
         None,
         retries,
-    )["headers"]
+    ).headers
 
     await workflow_context.qstash_client.message.publish_json(
         url=workflow_context.url,
@@ -38,23 +56,25 @@ async def trigger_first_invocation(
     )
 
 
-async def trigger_route_function(on_step, on_cleanup):
+async def trigger_route_function(
+    on_step: Callable[[], Awaitable[None]], on_cleanup: Callable[[], Awaitable[None]]
+) -> None:
     try:
-        # When onStep completes successfully, it throws QStashWorkflowAbort
+        # When onStep completes successfully, it throws WorkflowAbort
         # indicating that the step has been successfully executed.
         # This ensures that onCleanup is only called when no exception is thrown.
         await on_step()
         await on_cleanup()
     except Exception as error:
-        if isinstance(error, QStashWorkflowAbort):
+        if isinstance(error, WorkflowAbort):
             return
         raise error
 
 
 async def trigger_workflow_delete(
-    workflow_context,
-    cancel=False,
-):
+    workflow_context: WorkflowContext[TInitialPayload],
+    cancel: Optional[bool] = False,
+) -> None:
     async with httpx.AsyncClient() as client:
         await client.delete(
             f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
@@ -64,7 +84,7 @@ async def trigger_workflow_delete(
         )
 
 
-def recreate_user_headers(headers: dict) -> dict:
+def recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
     filtered_headers = {}
 
     for header, value in headers.items():
@@ -83,10 +103,14 @@ def recreate_user_headers(headers: dict) -> dict:
 
 
 async def handle_third_party_call_result(
-    request, request_payload, client, workflow_url, retries
-):
+    request: Request,
+    request_payload: str,
+    client: AsyncQStash,
+    workflow_url: str,
+    retries: int,
+) -> Literal["call-will-retry", "is-call-return", "continue-workflow"]:
     try:
-        if request.headers.get("Upstash-Workflow-Callback"):
+        if request.headers and request.headers.get("Upstash-Workflow-Callback"):
             if request_payload:
                 callback_payload = request_payload
             else:
@@ -140,6 +164,13 @@ async def handle_third_party_call_result(
                     f"Missing info in callback message source header: {info}"
                 )
 
+            workflow_run_id = cast(str, workflow_run_id)
+            step_id_str = cast(str, step_id_str)
+            step_name = cast(str, step_name)
+            step_type = cast(str, step_type)
+            concurrent_str = cast(str, concurrent_str)
+            content_type = cast(str, content_type)
+
             user_headers = recreate_user_headers(headers)
             request_headers = get_headers(
                 "false",
@@ -148,7 +179,7 @@ async def handle_third_party_call_result(
                 user_headers,
                 None,
                 retries,
-            )["headers"]
+            ).headers
 
             call_response = {
                 "status": callback_message["status"],
@@ -175,22 +206,24 @@ async def handle_third_party_call_result(
         return "continue-workflow"
 
     except Exception as error:
-        is_call_return = request.headers.get("Upstash-Workflow-Callback")
-        raise QStashWorkflowError(
+        is_call_return = request.headers and request.headers.get(
+            "Upstash-Workflow-Callback"
+        )
+        raise WorkflowError(
             f"Error when handling call return (isCallReturn={is_call_return}): {str(error)}"
         )
 
 
 def get_headers(
-    init_header_value,
-    workflow_run_id,
-    workflow_url,
-    user_headers,
-    step,
-    retries,
-    call_retries=None,
-    call_timeout=None,
-):
+    init_header_value: Literal["true", "false"],
+    workflow_run_id: str,
+    workflow_url: str,
+    user_headers: Optional[Dict[str, str]] = None,
+    step: Optional[DefaultStep] = None,
+    retries: Optional[int] = None,
+    call_retries: Optional[int] = None,
+    call_timeout: Optional[Union[int, str]] = None,
+) -> HeadersResponse:
     base_headers = {
         WORKFLOW_INIT_HEADER: init_header_value,
         WORKFLOW_ID_HEADER: workflow_run_id,
@@ -198,7 +231,7 @@ def get_headers(
         WORKFLOW_FEATURE_HEADER: "LazyFetch,InitialBody",
     }
 
-    if not (step and "callUrl" in step):
+    if not (step and step.call_url):
         base_headers[f"Upstash-Forward-{WORKFLOW_PROTOCOL_VERSION_HEADER}"] = (
             WORKFLOW_PROTOCOL_VERSION
         )
@@ -206,7 +239,7 @@ def get_headers(
     if call_timeout:
         base_headers["Upstash-Timeout"] = str(call_timeout)
 
-    if step and "callUrl" in step:
+    if step and step.call_url:
         base_headers["Upstash-Retries"] = str(
             call_retries if call_retries is not None else 0
         )
@@ -223,7 +256,7 @@ def get_headers(
         for header in user_headers.keys():
             header_value = user_headers.get(header)
             if header_value is not None:
-                if step and "callHeaders" in step:
+                if step and step.call_headers is not None:
                     base_headers[f"Upstash-Callback-Forward-{header}"] = header_value
                 else:
                     base_headers[f"Upstash-Forward-{header}"] = header_value
@@ -234,14 +267,14 @@ def get_headers(
     content_type = user_headers.get("Content-Type") if user_headers else None
     content_type = content_type or DEFAULT_CONTENT_TYPE
 
-    if step and "callHeaders" in step:
+    if step and step.call_headers is not None:
         forwarded_headers = {
             f"Upstash-Forward-{header}": value
-            for header, value in step["callHeaders"].items()
+            for header, value in step.call_headers.items()
         }
 
-        return {
-            "headers": {
+        return HeadersResponse(
+            headers={
                 **base_headers,
                 **forwarded_headers,
                 "Upstash-Callback": workflow_url,
@@ -251,43 +284,38 @@ def get_headers(
                 "Upstash-Callback-Workflow-Url": workflow_url,
                 "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
                 "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
-                "Upstash-Callback-Forward-Upstash-Workflow-StepId": str(
-                    step.get("stepId", None)
-                ),
-                "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.get(
-                    "stepName", None
-                ),
-                "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.get(
-                    "stepType", None
-                ),
+                "Upstash-Callback-Forward-Upstash-Workflow-StepId": str(step.step_id),
+                "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.step_name,
+                "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.step_type,
                 "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": str(
-                    step.get("concurrent", None)
+                    step.concurrent
                 ),
                 "Upstash-Callback-Forward-Upstash-Workflow-ContentType": content_type,
                 "Upstash-Workflow-CallType": "toCallback",
             }
-        }
+        )
 
-    return {"headers": base_headers}
+    return HeadersResponse(headers=base_headers)
 
 
-async def verify_request(body, signature, verifier):
+async def verify_request(
+    body: str, signature: Union[str, None], verifier: Optional[Receiver]
+) -> None:
     if not verifier:
         return
 
     try:
         if not signature:
             raise Exception("`Upstash-Signature` header is not passed.")
-        is_valid = await verifier.verify(
-            {
-                "body": body,
-                "signature": signature,
-            }
-        )
-        if not is_valid:
+        try:
+            verifier.verify(
+                body=body,
+                signature=signature,
+            )
+        except Exception as error:
             raise Exception("Signature in `Upstash-Signature` header is not valid")
     except Exception as error:
-        raise QStashWorkflowError(
+        raise WorkflowError(
             f"Failed to verify that the Workflow request comes from QStash: {error}\n\n"
             + "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n"
             + "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
