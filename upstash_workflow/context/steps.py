@@ -101,6 +101,32 @@ class LazySleepStep(BaseLazyStep[Any]):
         )
 
 
+class LazySleepUntilStep(BaseLazyStep[Any]):
+    def __init__(self, step_name: str, sleep_until: int):
+        super().__init__(step_name)
+        self.sleep_until: int = sleep_until
+        self.step_type: StepType = "SleepUntil"
+
+    def get_plan_step(self, concurrent: int, target_step: int) -> Step[None, Any]:
+        return Step(
+            step_id=0,
+            step_name=self.step_name,
+            step_type=self.step_type,
+            sleep_until=self.sleep_until,
+            concurrent=concurrent,
+            target_step=target_step,
+        )
+
+    async def get_result_step(self, concurrent: int, step_id: int) -> DefaultStep:
+        return Step(
+            step_id=step_id,
+            step_name=self.step_name,
+            step_type=self.step_type,
+            sleep_until=self.sleep_until,
+            concurrent=concurrent,
+        )
+
+
 class LazyCallStep(BaseLazyStep[TResult]):
     def __init__(
         self,

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from typing import Dict
+import time
 from upstash_workflow.fastapi import Serve
 from upstash_workflow.context.context import WorkflowContext
 from upstash_workflow.types import CallResponse
@@ -28,7 +29,7 @@ async def sleep(context: WorkflowContext[str]) -> None:
 
     result1: str = await context.run("step1", _step1)
 
-    await context.sleep("sleep1", 3)
+    await context.sleep_until("sleep1", time.time() + 3)
 
     async def _step2() -> str:
         output = some_work(result1)
