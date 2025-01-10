@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from typing import Optional, Callable, Awaitable, Dict, Union, cast, TypeVar
+from typing import Optional, Callable, Awaitable, Dict, cast, TypeVar, Any
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
 from upstash_workflow.workflow_parser import (
@@ -21,6 +21,7 @@ from upstash_workflow.serve.options import process_options, determine_urls
 from upstash_workflow.error import format_workflow_error
 from upstash_workflow.context.context import WorkflowContext
 from upstash_workflow.types import FinishCondition
+from upstash_workflow.serve.authorization import DisabledWorkflowContext
 
 _logger = logging.getLogger(__name__)
 
@@ -93,6 +94,20 @@ def serve(
             env=env,
             retries=retries,
         )
+
+        auth_check = await DisabledWorkflowContext[Any].try_authentication(
+            route_function, workflow_context
+        )
+
+        if auth_check == "run-ended":
+            return on_step_finish(
+                (
+                    "no-workflow-id"
+                    if is_first_invocation
+                    else workflow_context.workflow_run_id
+                ),
+                "auth-fail",
+            )
 
         call_return_check = await handle_third_party_call_result(
             request,

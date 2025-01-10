@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import logging
 from typing import Callable, Dict, Optional, cast, TypeVar, Match
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
@@ -9,6 +10,8 @@ from upstash_workflow.types import (
     FinishCondition,
     WorkflowServeOptions,
 )
+
+_logger = logging.getLogger(__name__)
 
 TResponse = TypeVar("TResponse")
 TInitialPayload = TypeVar("TInitialPayload")
@@ -35,6 +38,19 @@ def process_options(
     def _on_step_finish(
         workflow_run_id: str, finish_condition: FinishCondition
     ) -> TResponse:
+        if finish_condition == "auth-fail":
+            _logger.error(AUTH_FAIL_MESSAGE)
+            return cast(
+                TResponse,
+                Response(
+                    body={
+                        "message": AUTH_FAIL_MESSAGE,
+                        "workflowRunId": workflow_run_id,
+                    },
+                    status=400,
+                ),
+            )
+
         return cast(
             TResponse, Response(body={"workflowRunId": workflow_run_id}, status=200)
         )
@@ -101,3 +117,6 @@ async def determine_urls(
         workflow_url = initial_workflow_url
 
     return workflow_url
+
+
+AUTH_FAIL_MESSAGE = "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run"

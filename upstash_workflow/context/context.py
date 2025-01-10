@@ -46,7 +46,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         self.url: str = url
         self.headers: Dict[str, str] = headers
         self.request_payload: TInitialPayload = initial_payload
-        self.env: Union[Dict[str, str], Dict[str, Optional[str]]] = env or {}
+        self.env: Dict[str, Optional[str]] = env or {}
         self.retries: int = retries or DEFAULT_RETRIES
         self._executor: AutoExecutor = AutoExecutor(self, self._steps)
 

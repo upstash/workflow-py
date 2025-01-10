@@ -75,3 +75,20 @@ async def call(context: WorkflowContext[str]) -> None:
         return output
 
     await context.run("step2", _step2)
+
+
+@serve.post("/auth")
+async def auth(context: WorkflowContext[str]) -> None:
+    if context.headers.get("authentication") != "Bearer secret_password":
+        print("Authentication failed.")
+        return
+
+    async def _step1() -> str:
+        return "output 1"
+
+    await context.run("step1", _step1)
+
+    async def _step2() -> str:
+        return "output 2"
+
+    await context.run("step2", _step2)
