@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import asyncio
 from upstash_workflow.error import WorkflowError
 from typing import (
     Optional,

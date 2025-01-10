@@ -1,4 +1,3 @@
-import os
 from typing import Callable, Awaitable, Literal, TypeVar, Generic
 from qstash import AsyncQStash
 from upstash_workflow.context.context import WorkflowContext

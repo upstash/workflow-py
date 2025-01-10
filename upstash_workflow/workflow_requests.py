@@ -195,7 +195,7 @@ async def handle_third_party_call_result(
                 "concurrent": int(concurrent_str),
             }
 
-            result = await client.message.publish_json(
+            await client.message.publish_json(
                 headers=request_headers,
                 body=call_result_step,
                 url=workflow_url,
@@ -312,7 +312,7 @@ async def verify_request(
                 body=body,
                 signature=signature,
             )
-        except Exception as error:
+        except Exception:
             raise Exception("Signature in `Upstash-Signature` header is not valid")
     except Exception as error:
         raise WorkflowError(
