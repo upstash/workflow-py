@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from typing import Optional, Callable, Awaitable, Dict, Union, cast, TypeVar
+from typing import Optional, Callable, Awaitable, Dict, cast, TypeVar, Any
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import Response, Request
 from upstash_workflow.workflow_parser import (
@@ -95,7 +95,7 @@ def serve(
             retries=retries,
         )
 
-        auth_check = await DisabledWorkflowContext.try_authentication(
+        auth_check = await DisabledWorkflowContext[Any].try_authentication(
             route_function, workflow_context
         )
 
