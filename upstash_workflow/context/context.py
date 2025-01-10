@@ -160,7 +160,7 @@ class WorkflowContext(Generic[TInitialPayload]):
                 body=json.loads(result["body"]),
                 header=result["header"],
             )
-        except:
+        except Exception:
             return cast(CallResponse[Any], result)
 
     async def _add_step(self, step: BaseLazyStep[TResult]) -> TResult:
