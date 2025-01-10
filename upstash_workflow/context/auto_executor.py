@@ -1,21 +1,23 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Union, Literal, cast, Any
+from typing import TYPE_CHECKING, List, Union, Literal, cast, Any, TypeVar
 import json
 from qstash.message import BatchJsonRequest
 from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.workflow_requests import get_headers
-from upstash_workflow.types import Step, HTTPMethods
+from upstash_workflow.types import DefaultStep, HTTPMethods
 from upstash_workflow.context.steps import BaseLazyStep, LazyCallStep
 
 if TYPE_CHECKING:
     from upstash_workflow.context.context import WorkflowContext
 
+TResult = TypeVar("TResult")
+
 
 class AutoExecutor:
-    def __init__(self, context: WorkflowContext, steps: List[Step]):
-        self.context: WorkflowContext = context
-        self.steps: List[Step] = steps
+    def __init__(self, context: WorkflowContext[Any], steps: List[DefaultStep]):
+        self.context: WorkflowContext[Any] = context
+        self.steps: List[DefaultStep] = steps
         self.non_plan_step_count: int = len(
             [
                 step
@@ -27,23 +29,23 @@ class AutoExecutor:
         self.plan_step_count: int = 0
         self.executing_step: Union[str, Literal[False]] = False
 
-    async def add_step(self, step_info: BaseLazyStep):
+    async def add_step(self, step_info: BaseLazyStep[TResult]) -> TResult:
         self.step_count += 1
-        return await self.run_single(step_info)
+        return cast(TResult, await self.run_single(step_info))
 
-    async def run_single(self, lazy_step: BaseLazyStep):
+    async def run_single(self, lazy_step: BaseLazyStep[TResult]) -> Any:
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
             validate_step(lazy_step, step)
             return step.out
 
         result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
-        await self.submit_steps_to_qstash([cast(Step, result_step)], [lazy_step])
+        await self.submit_steps_to_qstash([result_step], [lazy_step])
         return result_step.out
 
     async def submit_steps_to_qstash(
-        self, steps: List[Step], lazy_steps: List[BaseLazyStep]
-    ):
+        self, steps: List[DefaultStep], lazy_steps: List[BaseLazyStep[Any]]
+    ) -> None:
         if not steps:
             raise WorkflowError(
                 f"Unable to submit steps to QStash. Provided list is empty. Current step: {self.step_count}"
@@ -61,7 +63,7 @@ class AutoExecutor:
                 self.context.retries,
                 lazy_step.retries if isinstance(lazy_step, LazyCallStep) else None,
                 lazy_step.timeout if isinstance(lazy_step, LazyCallStep) else None,
-            )
+            ).headers
 
             will_wait = (
                 single_step.concurrent == NO_CONCURRENCY or single_step.step_id == 0
@@ -71,7 +73,7 @@ class AutoExecutor:
 
             batch_requests.append(
                 BatchJsonRequest(
-                    headers=headers["headers"],
+                    headers=headers,
                     method=cast(HTTPMethods, single_step.call_method),
                     body=single_step.call_body,
                     url=single_step.call_url,
@@ -79,7 +81,7 @@ class AutoExecutor:
                 if single_step.call_url
                 else (
                     BatchJsonRequest(
-                        headers=headers["headers"],
+                        headers=headers,
                         body={
                             "method": "POST",
                             "stepId": single_step.step_id,
@@ -107,7 +109,7 @@ class AutoExecutor:
         raise WorkflowAbort(steps[0].step_name, steps[0])
 
 
-def validate_step(lazy_step: BaseLazyStep, step_from_request) -> None:
+def validate_step(lazy_step: BaseLazyStep[Any], step_from_request: DefaultStep) -> None:
     if lazy_step.step_name != step_from_request.step_name:
         raise WorkflowError(
             f"Incompatible step name. Expected '{lazy_step.step_name}', "
