@@ -60,20 +60,53 @@ class WorkflowContext(Generic[TInitialPayload]):
         step_name: str,
         step_function: Union[Callable[[], Any], Callable[[], Awaitable[Any]]],
     ) -> Any:
+        """
+        Executes a workflow step
+        ```python
+        async def _step1() -> str:
+            return "result"
+        result = await context.run("step1", _step1)
+
+        :param step_name: name of the step
+        :param step_function: step function to be executed
+        :return: result of the step function
+        """
         return await self._add_step(LazyFunctionStep(step_name, step_function))
 
     async def sleep(self, step_name: str, duration: Union[int, str]) -> None:
+        """
+        Stops the execution for the duration provided.
+
+        ```python
+        await context.sleep("sleep1", 3)  # wait for three seconds
+        ```
+
+        :param step_name: name of the step
+        :param duration: sleep duration in seconds
+        :return: None
+        """
         await self._add_step(LazySleepStep(step_name, duration))
 
     async def sleep_until(
-        self, step_name: str, data_time: Union[datetime.datetime, str, float]
+        self, step_name: str, date_time: Union[datetime.datetime, str, float]
     ) -> None:
-        if isinstance(data_time, (int, float)):
-            time = data_time
-        elif isinstance(data_time, str):
-            time = datetime.datetime.fromisoformat(data_time).timestamp()
+        """
+        Stops the execution until the date time provided.
+
+        ```python
+        await context.sleep_until("sleep1", time.time() + 3)  # wait for three seconds
+        ```
+
+        :param step_name: name of the step
+        :param date_time: time to sleep until. Can be provided as a number (in unix seconds), datetime object or string in iso format
+        :return: None
+        """
+        if isinstance(date_time, (int, float)):
+            time = date_time
+        elif isinstance(date_time, str):
+            time = datetime.datetime.fromisoformat(date_time).timestamp()
         else:
-            time = data_time.timestamp()
+            time = date_time.timestamp()
 
         await self._add_step(LazySleepUntilStep(step_name, round(time)))
 
@@ -88,6 +121,30 @@ class WorkflowContext(Generic[TInitialPayload]):
         retries: int = 0,
         timeout: Optional[Union[int, str]] = None,
     ) -> CallResponse[Any]:
+        """
+        Makes a third party call through QStash in order to make a network call without consuming any runtime.
+
+        ```python
+        response = await context.call(
+            "post-call-step",
+            url="https://www.some-endpoint.com/api",
+            method="POST",
+            body={"message": "my-message"},
+        )
+        status, body, header = response.status, response.body, response.header
+        ```
+
+        tries to parse the result of the request as JSON. If it's not a JSON which can be parsed, simply returns the response body as it is.
+
+        :param step_name: name of the step
+        :param url: url to call
+        :param method: call method. "GET" by default
+        :param body: call body
+        :param headers: call headers
+        :param retries: number of call retries. 0 by default
+        :param timeout: max duration to wait for the endpoint to respond. in seconds.
+        :return: CallResponse object containing status, body and header
+        """
         headers = headers or {}
 
         result = await self._add_step(
