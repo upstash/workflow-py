@@ -66,6 +66,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         async def _step1() -> str:
             return "result"
         result = await context.run("step1", _step1)
+        ```
 
         :param step_name: name of the step
         :param step_function: step function to be executed
