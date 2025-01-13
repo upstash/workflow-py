@@ -18,7 +18,9 @@ class Serve:
     def __init__(self, app: FastAPI):
         self.app = app
 
-    def post(self, path: str) -> Callable[
+    def post(
+        self, path: str
+    ) -> Callable[
         [Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]],
         Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]],
     ]:
