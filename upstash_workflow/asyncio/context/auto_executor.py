@@ -34,6 +34,15 @@ class AutoExecutor:
         return cast(TResult, await self.run_single(step_info))
 
     async def run_single(self, lazy_step: BaseLazyStep[TResult]) -> Any:
+        """
+        Executes a step:
+        - If the step result is available in the steps, returns the result
+        - If the result is not avaiable, runs the function
+        - Sends the result to QStash
+
+        :param lazy_step: lazy step to execute
+        :return: step result
+        """
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
             validate_step(lazy_step, step)
@@ -46,6 +55,11 @@ class AutoExecutor:
     async def submit_steps_to_qstash(
         self, steps: List[DefaultStep], lazy_steps: List[BaseLazyStep[Any]]
     ) -> None:
+        """
+        sends the steps to QStash as batch
+
+        :param steps: steps to send
+        """
         if not steps:
             raise WorkflowError(
                 f"Unable to submit steps to QStash. Provided list is empty. Current step: {self.step_count}"
@@ -110,6 +124,16 @@ class AutoExecutor:
 
 
 def validate_step(lazy_step: BaseLazyStep[Any], step_from_request: DefaultStep) -> None:
+    """
+    Given a BaseLazyStep which is created during execution and a Step parsed
+    from the incoming request; compare the step names and types to make sure
+    that they are the same.
+
+    Raises `WorkflowError` if there is a difference.
+
+    :param lazy_step: lazy step created during execution
+    :param step_from_request: step parsed from incoming request
+    """
     if lazy_step.step_name != step_from_request.step_name:
         raise WorkflowError(
             f"Incompatible step name. Expected '{lazy_step.step_name}', "

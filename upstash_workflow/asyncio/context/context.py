@@ -34,6 +34,12 @@ TResult = TypeVar("TResult")
 
 
 class WorkflowContext(Generic[TInitialPayload]):
+    """
+    Upstash Workflow context
+
+    See the docs for fields and methods https://upstash.com/docs/workflow/basics/context
+    """
+
     def __init__(
         self,
         qstash_client: AsyncQStash,
@@ -164,4 +170,8 @@ class WorkflowContext(Generic[TInitialPayload]):
             return cast(CallResponse[Any], result)
 
     async def _add_step(self, step: BaseLazyStep[TResult]) -> TResult:
+        """
+        Adds steps to the executor. Needed so that it can be overwritten in
+        DisabledWorkflowContext.
+        """
         return await self._executor.add_step(step)

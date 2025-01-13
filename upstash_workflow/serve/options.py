@@ -28,6 +28,19 @@ def process_options(
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
 ) -> WorkflowServeOptions[TInitialPayload, TResponse]:
+    """
+    Fills the options with default values if they are not provided.
+
+    Default values for:
+    - qstash_client: QStash client created with QSTASH_TOKEN env var
+    - on_step_finish: returns a Response with workflowRunId in the body (status: 200)
+    - initial_payload_parser: calls json.loads if initial request body exists.
+    - receiver: a Receiver if the required env vars are set
+    - base_url: env variable UPSTASH_WORKFLOW_URL
+    - env: os.environ
+    - retries: DEFAULT_RETRIES
+    - url: None
+    """
     environment = env if env is not None else dict(os.environ)
 
     receiver_environment_variables_set = bool(
