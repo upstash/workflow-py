@@ -9,14 +9,14 @@ from upstash_workflow.types import DefaultStep, HTTPMethods
 from upstash_workflow.asyncio.context.steps import BaseLazyStep, LazyCallStep
 
 if TYPE_CHECKING:
-    from upstash_workflow.asyncio.context.context import WorkflowContext
+    from upstash_workflow import AsyncWorkflowContext
 
 TResult = TypeVar("TResult")
 
 
 class AutoExecutor:
-    def __init__(self, context: WorkflowContext[Any], steps: List[DefaultStep]):
-        self.context: WorkflowContext[Any] = context
+    def __init__(self, context: AsyncWorkflowContext[Any], steps: List[DefaultStep]):
+        self.context: AsyncWorkflowContext[Any] = context
         self.steps: List[DefaultStep] = steps
         self.non_plan_step_count: int = len(
             [

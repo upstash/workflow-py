@@ -28,7 +28,7 @@ from upstash_workflow.types import StepTypes, DefaultStep, HeadersResponse
 from upstash_workflow.workflow_types import Request
 
 if TYPE_CHECKING:
-    from upstash_workflow.context.context import WorkflowContext
+    from upstash_workflow import WorkflowContext
 
 _logger = logging.getLogger(__name__)
 

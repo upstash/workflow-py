@@ -29,7 +29,7 @@ To declare workflow endpoints, use the `@serve.post` decorator. Save the followi
 ```python
 from fastapi import FastAPI
 from upstash_workflow.fastapi import Serve
-from upstash_workflow.asyncio.context.context import WorkflowContext
+from upstash_workflow import AsyncWorkflowContext
 
 app = FastAPI()
 serve = Serve(app)
@@ -40,7 +40,7 @@ def some_work(input: str) -> str:
 
 # serve endpoint which expects a string payload:
 @serve.post("/example")
-async def example(context: WorkflowContext[str]) -> None:
+async def example(context: AsyncWorkflowContext[str]) -> None:
     # get request body:
     input = context.request_payload
 

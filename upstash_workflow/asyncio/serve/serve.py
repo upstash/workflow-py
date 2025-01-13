@@ -17,7 +17,7 @@ from upstash_workflow.workflow_requests import verify_request, recreate_user_hea
 from upstash_workflow.serve.options import determine_urls
 from upstash_workflow.asyncio.serve.options import process_options
 from upstash_workflow.error import format_workflow_error
-from upstash_workflow.asyncio.context.context import WorkflowContext
+from upstash_workflow import AsyncWorkflowContext
 from upstash_workflow.types import FinishCondition
 from upstash_workflow.asyncio.serve.authorization import DisabledWorkflowContext
 
@@ -29,7 +29,7 @@ TResponse = TypeVar("TResponse")
 
 
 def serve(
-    route_function: Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]],
+    route_function: Callable[[AsyncWorkflowContext[TInitialPayload]], Awaitable[None]],
     *,
     qstash_client: Optional[AsyncQStash] = None,
     on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
@@ -78,7 +78,7 @@ def serve(
         raw_initial_payload = parse_request_response.raw_initial_payload
         steps = parse_request_response.steps
 
-        workflow_context = WorkflowContext(
+        workflow_context = AsyncWorkflowContext(
             qstash_client=qstash_client,
             workflow_run_id=workflow_run_id,
             initial_payload=initial_payload_parser(raw_initial_payload),

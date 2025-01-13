@@ -9,7 +9,7 @@ from upstash_workflow.types import DefaultStep, HTTPMethods
 from upstash_workflow.context.steps import BaseLazyStep, LazyCallStep
 
 if TYPE_CHECKING:
-    from upstash_workflow.context.context import WorkflowContext
+    from upstash_workflow import WorkflowContext
 
 TResult = TypeVar("TResult")
 

@@ -1,6 +1,6 @@
 from typing import Callable, Literal, TypeVar, Generic
 from qstash import QStash
-from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow import WorkflowContext
 from upstash_workflow.context.steps import BaseLazyStep
 from upstash_workflow.error import WorkflowAbort
 
