@@ -19,6 +19,9 @@ pip install -e .
 # install dependencies
 cd examples/$project_arg
 pip install -r requirements.txt
+if [ "$project_arg" == "nextjs-fastapi" ]; then
+    npm install
+fi
 
 # Start ngrok and capture the public URL
 ngrok http localhost:8000 --log=stdout > ngrok.log &
@@ -36,6 +39,8 @@ echo "ngrok is running. Press Ctrl+C to stop it."
 # Start the server
 if [ "$project_arg" == "fastapi" ]; then
     uvicorn main:app --reload
+elif [ "$project_arg" == "nextjs-fastapi" ]; then
+    npm run dev
 else
     echo "Invalid project argument."
     exit 1
