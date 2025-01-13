@@ -1,9 +1,17 @@
+from inspect import iscoroutinefunction
 from fastapi import FastAPI, Request, Response
-from typing import Callable, Awaitable, cast, TypeVar
+from typing import Callable, Awaitable, cast, TypeVar, Union
 from upstash_workflow.serve.serve import serve
 from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow.asyncio.serve.serve import serve as async_serve
+from upstash_workflow.asyncio.context.context import (
+    WorkflowContext as AsyncWorkflowContext,
+)
 
 TInitialPayload = TypeVar("TInitialPayload")
+
+RouteFunction = Callable[[WorkflowContext[TInitialPayload]], None]
+AsyncRouteFunction = Callable[[AsyncWorkflowContext[TInitialPayload]], Awaitable[None]]
 
 
 class Serve:
@@ -13,23 +21,40 @@ class Serve:
     def post(
         self, path: str
     ) -> Callable[
-        [Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]]],
-        Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]],
+        [Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]],
+        Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]],
     ]:
         def decorator(
-            route_function: Callable[
-                [WorkflowContext[TInitialPayload]], Awaitable[None]
+            route_function: Union[
+                RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]
             ],
-        ) -> Callable[[WorkflowContext[TInitialPayload]], Awaitable[None]]:
-            handler = cast(
-                Callable[[Request], Awaitable[Response]],
-                serve(route_function).get("handler"),
-            )
+        ) -> Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]:
+            if iscoroutinefunction(route_function):
+                async_handler = cast(
+                    Callable[[Request], Awaitable[Response]],
+                    async_serve(
+                        cast(AsyncRouteFunction[TInitialPayload], route_function)
+                    ).get("handler"),
+                )
 
-            async def _handler_wrapper(request: Request) -> Response:
-                return await handler(request)
+                async def _async_handler_wrapper(request: Request) -> Response:
+                    return await async_handler(request)
 
-            self.app.add_api_route(path, _handler_wrapper, methods=["POST"])
+                self.app.add_api_route(path, _async_handler_wrapper, methods=["POST"])
+
+            else:
+                sync_handler = cast(
+                    Callable[[Request], Response],
+                    serve(cast(RouteFunction[TInitialPayload], route_function)).get(
+                        "handler"
+                    ),
+                )
+
+                def _sync_handler_wrapper(request: Request) -> Response:
+                    return sync_handler(request)
+
+                self.app.add_api_route(path, _sync_handler_wrapper, methods=["POST"])
+
             return route_function
 
         return decorator

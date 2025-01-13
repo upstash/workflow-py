@@ -1,32 +1,7 @@
 import json
 from aiohttp import web
-from typing import Any, Dict, Optional, Union, Callable
-
-WORKFLOW_ENDPOINT = "https://www.my-website.com/api"
-MOCK_QSTASH_SERVER_PORT = 8080
-MOCK_QSTASH_SERVER_URL = f"http://localhost:{MOCK_QSTASH_SERVER_PORT}"
-
-
-class ResponseFields:
-    def __init__(self, body: Any, status: int):
-        self.body = body
-        self.status = status
-
-
-class RequestFields:
-    def __init__(
-        self,
-        method: str,
-        url: str,
-        token: str,
-        body: Optional[Any] = None,
-        headers: Optional[Dict[str, Optional[str]]] = None,
-    ):
-        self.method = method
-        self.url = url
-        self.token = token
-        self.body = body
-        self.headers = headers
+from typing import Any, Union, Callable
+from tests.utils import MOCK_QSTASH_SERVER_PORT, RequestFields, ResponseFields
 
 
 async def mock_qstash_server(

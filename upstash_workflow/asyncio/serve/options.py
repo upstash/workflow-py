@@ -1,15 +1,14 @@
 import os
 import json
-import re
 import logging
-from typing import Callable, Dict, Optional, cast, TypeVar, Match
-from qstash import QStash, Receiver
-from upstash_workflow.workflow_types import Response, Request
+from typing import Callable, Dict, Optional, cast, TypeVar
+from qstash import AsyncQStash, Receiver
+from upstash_workflow.workflow_types import Response
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
     FinishCondition,
-    WorkflowServeOptions,
 )
+from upstash_workflow.asyncio.types import WorkflowServeOptions
 
 _logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ TInitialPayload = TypeVar("TInitialPayload")
 
 def process_options(
     *,
-    qstash_client: Optional[QStash] = None,
+    qstash_client: Optional[AsyncQStash] = None,
     on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
@@ -72,7 +71,7 @@ def process_options(
 
     return WorkflowServeOptions[TInitialPayload, TResponse](
         qstash_client=qstash_client
-        or QStash(
+        or AsyncQStash(
             cast(str, environment.get("QSTASH_TOKEN", "")),
         ),
         on_step_finish=on_step_finish or _on_step_finish,
@@ -95,28 +94,6 @@ def process_options(
         retries=retries or DEFAULT_RETRIES,
         url=url,
     )
-
-
-def determine_urls(
-    request: Request,
-    url: Optional[str],
-    base_url: Optional[str],
-) -> str:
-    initial_workflow_url = str(url if url is not None else request.url)
-
-    if base_url:
-
-        def replace_base(match: Match[str]) -> str:
-            matched_base_url, path = match.groups()
-            return base_url + (path or "")
-
-        workflow_url = re.sub(
-            r"^(https?://[^/]+)(/.*)?$", replace_base, initial_workflow_url
-        )
-    else:
-        workflow_url = initial_workflow_url
-
-    return workflow_url
 
 
 AUTH_FAIL_MESSAGE = "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run"
