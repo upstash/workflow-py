@@ -36,6 +36,8 @@ echo "ngrok is running. Press Ctrl+C to stop it."
 # Start the server
 if [ "$project_arg" == "fastapi" ]; then
     uvicorn main:app --reload
+elif [ "$project_arg" == "flask" ]; then
+    flask --app main run -p 8000
 else
     echo "Invalid project argument."
     exit 1

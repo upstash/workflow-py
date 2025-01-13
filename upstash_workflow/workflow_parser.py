@@ -19,7 +19,7 @@ from upstash_workflow.workflow_types import Request
 
 def get_payload(request: Request) -> Optional[str]:
     try:
-        return json.dumps(request.json())
+        return json.dumps(request.json() or request.get_json())
     except Exception:
         return None
 
