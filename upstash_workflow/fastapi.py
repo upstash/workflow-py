@@ -1,6 +1,6 @@
 from inspect import iscoroutinefunction
 from fastapi import FastAPI, Request, Response
-from typing import Callable, Awaitable, cast, TypeVar, Union, overload
+from typing import Callable, Awaitable, cast, TypeVar, Union
 from upstash_workflow.serve.serve import serve
 from upstash_workflow.context.context import WorkflowContext
 from upstash_workflow.asyncio.serve.serve import serve as async_serve
@@ -20,22 +20,10 @@ class Serve:
 
     def post(
         self, path: str
-    ) -> Union[
-        Callable[[RouteFunction[TInitialPayload]], RouteFunction[TInitialPayload]],
-        Callable[
-            [AsyncRouteFunction[TInitialPayload]], AsyncRouteFunction[TInitialPayload]
-        ],
+    ) -> Callable[
+        [Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]],
+        Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]],
     ]:
-        @overload
-        def decorator(
-            route_function: RouteFunction[TInitialPayload],
-        ) -> RouteFunction[TInitialPayload]: ...
-
-        @overload
-        def decorator(
-            route_function: AsyncRouteFunction[TInitialPayload],
-        ) -> AsyncRouteFunction[TInitialPayload]: ...
-
         def decorator(
             route_function: Union[
                 RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]
