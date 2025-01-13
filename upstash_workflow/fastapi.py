@@ -30,30 +30,30 @@ class Serve:
             ],
         ) -> Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]:
             if iscoroutinefunction(route_function):
-                sync_handler = cast(
+                async_handler = cast(
                     Callable[[Request], Awaitable[Response]],
                     async_serve(
                         cast(AsyncRouteFunction[TInitialPayload], route_function)
                     ).get("handler"),
                 )
 
-                async def _sync_handler_wrapper(request: Request) -> Response:
-                    return await sync_handler(request)
+                async def _async_handler_wrapper(request: Request) -> Response:
+                    return await async_handler(request)
 
-                self.app.add_api_route(path, _sync_handler_wrapper, methods=["POST"])
+                self.app.add_api_route(path, _async_handler_wrapper, methods=["POST"])
 
             else:
-                async_handler = cast(
+                sync_handler = cast(
                     Callable[[Request], Response],
                     serve(cast(RouteFunction[TInitialPayload], route_function)).get(
                         "handler"
                     ),
                 )
 
-                def _async_handler_wrapper(request: Request) -> Response:
-                    return async_handler(request)
+                def _sync_handler_wrapper(request: Request) -> Response:
+                    return sync_handler(request)
 
-                self.app.add_api_route(path, _async_handler_wrapper, methods=["POST"])
+                self.app.add_api_route(path, _sync_handler_wrapper, methods=["POST"])
 
             return route_function
 
