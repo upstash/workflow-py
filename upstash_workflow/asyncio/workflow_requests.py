@@ -22,7 +22,7 @@ from upstash_workflow.workflow_types import Request
 from upstash_workflow.workflow_requests import get_headers, recreate_user_headers
 
 if TYPE_CHECKING:
-    from upstash_workflow.asyncio.context.context import WorkflowContext
+    from upstash_workflow import AsyncWorkflowContext
 
 _logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ TInitialPayload = TypeVar("TInitialPayload")
 
 
 async def trigger_first_invocation(
-    workflow_context: WorkflowContext[TInitialPayload],
+    workflow_context: AsyncWorkflowContext[TInitialPayload],
     retries: int,
 ) -> None:
     headers = get_headers(
@@ -65,7 +65,7 @@ async def trigger_route_function(
 
 
 async def trigger_workflow_delete(
-    workflow_context: WorkflowContext[TInitialPayload],
+    workflow_context: AsyncWorkflowContext[TInitialPayload],
     cancel: Optional[bool] = False,
 ) -> None:
     async with httpx.AsyncClient() as client:

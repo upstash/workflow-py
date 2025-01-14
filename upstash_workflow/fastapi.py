@@ -2,12 +2,7 @@ from inspect import iscoroutinefunction
 from fastapi import FastAPI, Request, Response
 from typing import Callable, Awaitable, cast, TypeVar, Union, Optional, Dict
 from qstash import QStash, AsyncQStash, Receiver
-from upstash_workflow.serve.serve import serve
-from upstash_workflow.context.context import WorkflowContext
-from upstash_workflow.asyncio.serve.serve import serve as async_serve
-from upstash_workflow.asyncio.context.context import (
-    WorkflowContext as AsyncWorkflowContext,
-)
+from upstash_workflow import serve, async_serve, WorkflowContext, AsyncWorkflowContext
 from upstash_workflow.types import FinishCondition
 
 TInitialPayload = TypeVar("TInitialPayload")

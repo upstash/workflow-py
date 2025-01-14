@@ -1,6 +1,6 @@
 import pytest
 from qstash import QStash
-from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow import WorkflowContext
 from upstash_workflow.error import WorkflowAbort
 from tests.utils import (
     mock_qstash_server,

@@ -1,6 +1,6 @@
 import pytest
 from qstash import AsyncQStash
-from upstash_workflow.asyncio.context.context import WorkflowContext
+from upstash_workflow import AsyncWorkflowContext
 from upstash_workflow.error import WorkflowAbort
 from tests.utils import (
     RequestFields,
@@ -22,7 +22,7 @@ async def test_workflow_headers(qstash_client: AsyncQStash) -> None:
     body = "request-body"
     retries = 10
 
-    context = WorkflowContext(
+    context = AsyncWorkflowContext(
         qstash_client=qstash_client,
         workflow_run_id="wfr-id",
         headers={},

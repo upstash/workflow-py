@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from typing import Dict
 import time
 from upstash_workflow.fastapi import Serve
-from upstash_workflow.asyncio.context.context import WorkflowContext
-from upstash_workflow.types import CallResponse
+from upstash_workflow import AsyncWorkflowContext, CallResponse
 
 app = FastAPI()
 serve = Serve(app)
@@ -19,7 +18,7 @@ def some_work(input: str) -> str:
 
 
 @serve.post("/sleep")
-async def sleep(context: WorkflowContext[str]) -> None:
+async def sleep(context: AsyncWorkflowContext[str]) -> None:
     input = context.request_payload
 
     async def _step1() -> str:
@@ -53,7 +52,7 @@ async def get_data() -> Dict[str, str]:
 
 
 @serve.post("/call")
-async def call(context: WorkflowContext[str]) -> None:
+async def call(context: AsyncWorkflowContext[str]) -> None:
     input = context.request_payload
 
     async def _step1() -> str:
@@ -79,7 +78,7 @@ async def call(context: WorkflowContext[str]) -> None:
 
 
 @serve.post("/auth")
-async def auth(context: WorkflowContext[str]) -> None:
+async def auth(context: AsyncWorkflowContext[str]) -> None:
     if context.headers.get("authentication") != "Bearer secret_password":
         print("Authentication failed.")
         return

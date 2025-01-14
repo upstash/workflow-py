@@ -18,7 +18,7 @@ from upstash_workflow.workflow_requests import (
 )
 from upstash_workflow.serve.options import process_options, determine_urls
 from upstash_workflow.error import format_workflow_error
-from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow import WorkflowContext
 from upstash_workflow.types import FinishCondition
 from upstash_workflow.serve.authorization import DisabledWorkflowContext
 
