@@ -1,14 +1,13 @@
 from inspect import iscoroutinefunction
 from fastapi import FastAPI, Request, Response
-from typing import Callable, Awaitable, cast, TypeVar, Union, Optional, Dict
-from qstash import QStash, AsyncQStash, Receiver
-from upstash_workflow import serve, async_serve, WorkflowContext, AsyncWorkflowContext
+from typing import Callable, Awaitable, cast, TypeVar, Optional, Dict
+from qstash import AsyncQStash, Receiver
+from upstash_workflow import async_serve, AsyncWorkflowContext
 from upstash_workflow.types import FinishCondition
 
 TInitialPayload = TypeVar("TInitialPayload")
 TResponse = TypeVar("TResponse")
 
-RouteFunction = Callable[[WorkflowContext[TInitialPayload]], None]
 AsyncRouteFunction = Callable[[AsyncWorkflowContext[TInitialPayload]], Awaitable[None]]
 
 
@@ -20,7 +19,7 @@ class Serve:
         self,
         path: str,
         *,
-        qstash_client: Optional[Union[QStash, AsyncQStash]] = None,
+        qstash_client: Optional[AsyncQStash] = None,
         on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
         initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
         receiver: Optional[Receiver] = None,
@@ -29,8 +28,7 @@ class Serve:
         retries: Optional[int] = None,
         url: Optional[str] = None,
     ) -> Callable[
-        [Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]],
-        Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]],
+        [AsyncRouteFunction[TInitialPayload]], AsyncRouteFunction[TInitialPayload]
     ]:
         """
         Decorator to serve a Upstash Workflow in a FastAPI project.
@@ -48,10 +46,8 @@ class Serve:
         """
 
         def decorator(
-            route_function: Union[
-                RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]
-            ],
-        ) -> Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]:
+            route_function: AsyncRouteFunction[TInitialPayload],
+        ) -> AsyncRouteFunction[TInitialPayload]:
             if iscoroutinefunction(route_function):
                 if qstash_client and not isinstance(qstash_client, AsyncQStash):
                     raise ValueError(
@@ -78,29 +74,9 @@ class Serve:
                 self.app.add_api_route(path, _async_handler_wrapper, methods=["POST"])
 
             else:
-                if qstash_client and not isinstance(qstash_client, QStash):
-                    raise ValueError(
-                        "qstash_client must be an instance of QStash when using a sync route function"
-                    )
-                sync_handler = cast(
-                    Callable[[Request], Response],
-                    serve(
-                        cast(RouteFunction[TInitialPayload], route_function),
-                        qstash_client=cast(QStash, qstash_client),
-                        on_step_finish=on_step_finish,
-                        initial_payload_parser=initial_payload_parser,
-                        receiver=receiver,
-                        base_url=base_url,
-                        env=env,
-                        retries=retries,
-                        url=url,
-                    ).get("handler"),
+                raise ValueError(
+                    "route_function must be an async function when using the @serve.post decorator"
                 )
-
-                def _sync_handler_wrapper(request: Request) -> Response:
-                    return sync_handler(request)
-
-                self.app.add_api_route(path, _sync_handler_wrapper, methods=["POST"])
 
             return route_function
 
