@@ -84,6 +84,12 @@ def trigger_workflow_delete(
 
 
 def recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
+    """
+    Removes headers starting with `Upstash-Workflow-` from the headers
+
+    :param headers: incoming headers
+    :return: headers with `Upstash-Workflow-` headers removed
+    """
     filtered_headers = {}
 
     for header, value in headers.items():
@@ -108,6 +114,28 @@ def handle_third_party_call_result(
     workflow_url: str,
     retries: int,
 ) -> Literal["call-will-retry", "is-call-return", "continue-workflow"]:
+    """
+    Check if the request is from a third party call result. If so,
+    call QStash to add the result to the ongoing workflow.
+
+    Otherwise, do nothing.
+
+    ### How third party calls work
+
+    In third party calls, we publish a message to the third party API.
+    the result is then returned back to the workflow endpoint.
+
+    Whenever the workflow endpoint receives a request, we first check
+    if the incoming request is a third party call result coming from QStash.
+    If so, we send back the result to QStash as a result step.
+
+    :param request: Incoming request
+    :param request_payload: Request payload
+    :param client: QStash client
+    :param workflow_url: Workflow URL
+    :param retries: Number of retries
+    :return: "call-will-retry", "is-call-return" or "continue-workflow"
+    """
     try:
         if request.headers and request.headers.get("Upstash-Workflow-Callback"):
             if request_payload:
@@ -223,6 +251,16 @@ def get_headers(
     call_retries: Optional[int] = None,
     call_timeout: Optional[Union[int, str]] = None,
 ) -> HeadersResponse:
+    """
+    Gets headers for calling QStash
+
+    :param init_header_value: Whether the invocation should create a new workflow
+    :param workflow_run_id: id of the workflow
+    :param workflow_url: url of the workflow endpoint
+    :param step: step to get headers for. If the step is a third party call step, more
+          headers are added.
+    :return: headers to submit
+    """
     base_headers = {
         WORKFLOW_INIT_HEADER: init_header_value,
         WORKFLOW_ID_HEADER: workflow_run_id,
