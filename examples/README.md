@@ -7,8 +7,8 @@ This directory has example projects for Upstash Workflow with different framewor
 There are three alternatives:
 
 1. Deploy the app and use the interface to call it
-2. Run the app locally and create a local tunnel with Ngrok so that QStash can call it. Doing this is simplified through the `bootstrap.sh` script.
-3. If you have access to the QStash development server, run both the development server and the example workflow project locally. Unfortunetly, local QStash development server is not public.
+2. Run the app locally and [create a local tunnel with Ngrok](\(https://upstash.com/docs/workflow/howto/local-development\)) so that QStash can call it. Doing this is simplified through the `bootstrap.sh` script.
+3. If you have access to [the QStash development server](https://upstash.com/docs/workflow/howto/local-development), run both the development server and the example workflow project locally.
 
 ### `bootstrap.sh` Script
 
@@ -28,9 +28,9 @@ bash bootstrap.sh nextjs-fastapi
 
 Here is what the script does in a nutshell:
 
-- create a Ngrok tunnel from `localhost:8000`
-- Public URL of the tunnel is inferred from Ngrok logs. This URL is set to the `UPSTASH_WORKFLOW_URL` environment variable.
-- `pip install` and framework-specific commands are executed in the example directory
+* create a Ngrok tunnel from `localhost:8000`
+* Public URL of the tunnel is inferred from Ngrok logs. This URL is set to the `UPSTASH_WORKFLOW_URL` environment variable.
+* `pip install` and framework-specific commands are executed in the example directory
 
 To use the app, simply send a request through the interface or use the `curl` command.
 
