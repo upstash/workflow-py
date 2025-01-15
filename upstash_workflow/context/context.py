@@ -13,13 +13,13 @@ from typing import (
 )
 from qstash import QStash
 from upstash_workflow.constants import DEFAULT_RETRIES
-from upstash_workflow.context.auto_executor import AutoExecutor
+from upstash_workflow.context.auto_executor import _AutoExecutor
 from upstash_workflow.context.steps import (
-    LazyFunctionStep,
-    LazySleepStep,
-    LazySleepUntilStep,
-    LazyCallStep,
-    BaseLazyStep,
+    _LazyFunctionStep,
+    _LazySleepStep,
+    _LazySleepUntilStep,
+    _LazyCallStep,
+    _BaseLazyStep,
 )
 from upstash_workflow.types import (
     DefaultStep,
@@ -58,7 +58,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         self.request_payload: TInitialPayload = initial_payload
         self.env: Dict[str, Optional[str]] = env or {}
         self.retries: int = retries or DEFAULT_RETRIES
-        self._executor: AutoExecutor = AutoExecutor(self, self._steps)
+        self._executor: _AutoExecutor = _AutoExecutor(self, self._steps)
 
     def run(
         self,
@@ -77,7 +77,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         :param step_function: step function to be executed
         :return: result of the step function
         """
-        return self._add_step(LazyFunctionStep(step_name, step_function))
+        return self._add_step(_LazyFunctionStep(step_name, step_function))
 
     def sleep(self, step_name: str, duration: Union[int, str]) -> None:
         """
@@ -91,7 +91,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         :param duration: sleep duration in seconds
         :return: None
         """
-        self._add_step(LazySleepStep(step_name, duration))
+        self._add_step(_LazySleepStep(step_name, duration))
 
     def sleep_until(
         self, step_name: str, date_time: Union[datetime.datetime, str, float]
@@ -114,7 +114,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         else:
             time = date_time.timestamp()
 
-        self._add_step(LazySleepUntilStep(step_name, round(time)))
+        self._add_step(_LazySleepUntilStep(step_name, round(time)))
 
     def call(
         self,
@@ -154,7 +154,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         headers = headers or {}
 
         result = self._add_step(
-            LazyCallStep[CallResponseDict](
+            _LazyCallStep[CallResponseDict](
                 step_name, url, method, body, headers, retries, timeout
             )
         )
@@ -168,7 +168,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         except Exception:
             return cast(CallResponse[Any], result)
 
-    def _add_step(self, step: BaseLazyStep[TResult]) -> TResult:
+    def _add_step(self, step: _BaseLazyStep[TResult]) -> TResult:
         """
         Adds steps to the executor. Needed so that it can be overwritten in
         DisabledWorkflowContext.

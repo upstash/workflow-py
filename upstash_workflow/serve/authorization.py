@@ -1,14 +1,14 @@
 from typing import Callable, Literal, TypeVar, Generic
 from qstash import QStash
 from upstash_workflow import WorkflowContext
-from upstash_workflow.context.steps import BaseLazyStep
+from upstash_workflow.context.steps import _BaseLazyStep
 from upstash_workflow.error import WorkflowAbort
 
 TInitialPayload = TypeVar("TInitialPayload")
 TResult = TypeVar("TResult")
 
 
-class DisabledWorkflowContext(
+class _DisabledWorkflowContext(
     Generic[TInitialPayload], WorkflowContext[TInitialPayload]
 ):
     """
@@ -35,7 +35,7 @@ class DisabledWorkflowContext(
 
     __disabled_message = "disabled-qstash-worklfow-run"
 
-    def _add_step(self, _step: BaseLazyStep[TResult]) -> TResult:
+    def _add_step(self, _step: _BaseLazyStep[TResult]) -> TResult:
         """
         Overwrite the `WorkflowContext._add_step` method to always raise `WorkflowAbort`
         error in order to stop the execution whenever we encounter a step.
@@ -67,7 +67,7 @@ class DisabledWorkflowContext(
 
         :param route_function:
         """
-        disabled_context = DisabledWorkflowContext(
+        disabled_context = _DisabledWorkflowContext(
             qstash_client=QStash(base_url="disabled-client", token="disabled-client"),
             workflow_run_id=context.workflow_run_id,
             headers=context.headers,

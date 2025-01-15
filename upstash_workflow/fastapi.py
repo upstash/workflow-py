@@ -5,8 +5,7 @@ from fastapi.responses import JSONResponse
 from typing import Callable, Awaitable, cast, TypeVar, Optional, Dict
 from qstash import AsyncQStash, Receiver
 from upstash_workflow import async_serve, AsyncWorkflowContext
-from upstash_workflow.types import FinishCondition
-from upstash_workflow.workflow_types import Response as WorkflowResponse
+from upstash_workflow.workflow_types import _Response as WorkflowResponse
 
 TInitialPayload = TypeVar("TInitialPayload")
 TResponse = TypeVar("TResponse")
@@ -23,7 +22,6 @@ class Serve:
         path: str,
         *,
         qstash_client: Optional[AsyncQStash] = None,
-        on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
         initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
         receiver: Optional[Receiver] = None,
         base_url: Optional[str] = None,
@@ -36,9 +34,8 @@ class Serve:
         """
         Decorator to serve a Upstash Workflow in a FastAPI project.
 
-        :param route_function: A function that uses WorkflowContext as a parameter and runs a workflow.
-        :param qstash_client: QStash client
-        :param on_step_finish: Function called to return a response after each step execution
+        :param route_function: A function that uses AsyncWorkflowContext as a parameter and runs a workflow.
+        :param qstash_client: AsyncQStash client
         :param initial_payload_parser: Function to parse the initial payload passed by the user
         :param receiver: Receiver to verify *all* requests by checking if they come from QStash. By default, a receiver is created from the env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY if they are set.
         :param base_url: Base Url of the workflow endpoint. Can be used to set if there is a local tunnel or a proxy between QStash and the workflow endpoint. Will be set to the env variable UPSTASH_WORKFLOW_URL if not passed. If the env variable is not set, the url will be infered as usual from the `request.url` or the `url` parameter in `serve` options.
@@ -61,7 +58,6 @@ class Serve:
                     async_serve(
                         cast(AsyncRouteFunction[TInitialPayload], route_function),
                         qstash_client=cast(AsyncQStash, qstash_client),
-                        on_step_finish=on_step_finish,
                         initial_payload_parser=initial_payload_parser,
                         receiver=receiver,
                         base_url=base_url,

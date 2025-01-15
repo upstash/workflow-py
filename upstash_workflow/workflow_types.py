@@ -4,7 +4,7 @@ import json
 
 
 @dataclass
-class Response:
+class _Response:
     body: str
     status: int
     headers: Optional[Dict[str, str]] = None
@@ -18,7 +18,7 @@ class Response:
 
 
 @dataclass
-class SyncRequest:
+class _SyncRequest:
     body: str = ""
     headers: Optional[Dict[str, str]] = field(default_factory=dict)
     query: Optional[Dict[str, str]] = field(default_factory=dict)
@@ -27,7 +27,7 @@ class SyncRequest:
 
 
 @dataclass
-class AsyncRequest:
+class _AsyncRequest:
     _body: bytes = b""
     headers: Optional[Dict[str, str]] = field(default_factory=dict)
     query: Optional[Dict[str, str]] = field(default_factory=dict)

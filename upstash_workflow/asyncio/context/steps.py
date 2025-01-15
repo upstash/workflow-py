@@ -17,7 +17,7 @@ TResult = TypeVar("TResult")
 TBody = TypeVar("TBody")
 
 
-class BaseLazyStep(ABC, Generic[TResult]):
+class _BaseLazyStep(ABC, Generic[TResult]):
     def __init__(self, step_name: str):
         if not step_name:
             raise WorkflowError(
@@ -37,7 +37,7 @@ class BaseLazyStep(ABC, Generic[TResult]):
         pass
 
 
-class LazyFunctionStep(BaseLazyStep[TResult]):
+class _LazyFunctionStep(_BaseLazyStep[TResult]):
     def __init__(
         self,
         step_name: str,
@@ -74,7 +74,7 @@ class LazyFunctionStep(BaseLazyStep[TResult]):
         )
 
 
-class LazySleepStep(BaseLazyStep[Any]):
+class _LazySleepStep(_BaseLazyStep[Any]):
     def __init__(self, step_name: str, sleep: Union[int, str]):
         super().__init__(step_name)
         self.sleep: Union[int, str] = sleep
@@ -100,7 +100,7 @@ class LazySleepStep(BaseLazyStep[Any]):
         )
 
 
-class LazySleepUntilStep(BaseLazyStep[Any]):
+class _LazySleepUntilStep(_BaseLazyStep[Any]):
     def __init__(self, step_name: str, sleep_until: int):
         super().__init__(step_name)
         self.sleep_until: int = sleep_until
@@ -126,7 +126,7 @@ class LazySleepUntilStep(BaseLazyStep[Any]):
         )
 
 
-class LazyCallStep(BaseLazyStep[TResult]):
+class _LazyCallStep(_BaseLazyStep[TResult]):
     def __init__(
         self,
         step_name: str,

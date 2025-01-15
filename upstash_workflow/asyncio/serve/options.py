@@ -3,12 +3,12 @@ import json
 import logging
 from typing import Callable, Dict, Optional, cast, TypeVar
 from qstash import AsyncQStash, Receiver
-from upstash_workflow.workflow_types import Response
+from upstash_workflow.workflow_types import _Response
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
-    FinishCondition,
+    _FinishCondition,
 )
-from upstash_workflow.asyncio.types import WorkflowServeOptions
+from upstash_workflow.asyncio.types import ServeBaseOptions
 
 _logger = logging.getLogger(__name__)
 
@@ -16,17 +16,17 @@ TResponse = TypeVar("TResponse")
 TInitialPayload = TypeVar("TInitialPayload")
 
 
-def process_options(
+def _process_options(
     *,
     qstash_client: Optional[AsyncQStash] = None,
-    on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
+    on_step_finish: Optional[Callable[[str, _FinishCondition], TResponse]] = None,
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
     base_url: Optional[str] = None,
     env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
-) -> WorkflowServeOptions[TInitialPayload, TResponse]:
+) -> ServeBaseOptions[TInitialPayload, TResponse]:
     environment = env if env is not None else dict(os.environ)
 
     receiver_environment_variables_set = bool(
@@ -35,13 +35,13 @@ def process_options(
     )
 
     def _on_step_finish(
-        workflow_run_id: str, finish_condition: FinishCondition
+        workflow_run_id: str, finish_condition: _FinishCondition
     ) -> TResponse:
         if finish_condition == "auth-fail":
             _logger.error(AUTH_FAIL_MESSAGE)
             return cast(
                 TResponse,
-                Response(
+                _Response(
                     body={
                         "message": AUTH_FAIL_MESSAGE,
                         "workflowRunId": workflow_run_id,
@@ -51,7 +51,7 @@ def process_options(
             )
 
         return cast(
-            TResponse, Response(body={"workflowRunId": workflow_run_id}, status=200)
+            TResponse, _Response(body={"workflowRunId": workflow_run_id}, status=200)
         )
 
     def _initial_payload_parser(initial_request: str) -> TInitialPayload:
@@ -69,7 +69,7 @@ def process_options(
             # If not a JSON parsing error, re-raise
             raise error
 
-    return WorkflowServeOptions[TInitialPayload, TResponse](
+    return ServeBaseOptions[TInitialPayload, TResponse](
         qstash_client=qstash_client
         or AsyncQStash(
             cast(str, environment.get("QSTASH_TOKEN", "")),

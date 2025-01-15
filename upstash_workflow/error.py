@@ -39,7 +39,7 @@ class WorkflowAbort(Exception):
         self.name = "WorkflowAbort"
 
 
-def format_workflow_error(error: object) -> Dict[str, str]:
+def _format_workflow_error(error: object) -> Dict[str, str]:
     """
     Formats an unknown error to match the FailureFunctionPayload format
 

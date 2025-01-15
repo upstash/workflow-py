@@ -1,19 +1,19 @@
 from typing import Callable, Awaitable, Literal, TypeVar, Generic
 from qstash import AsyncQStash
 from upstash_workflow import AsyncWorkflowContext
-from upstash_workflow.asyncio.context.steps import BaseLazyStep
+from upstash_workflow.asyncio.context.steps import _BaseLazyStep
 from upstash_workflow.error import WorkflowAbort
 
 TInitialPayload = TypeVar("TInitialPayload")
 TResult = TypeVar("TResult")
 
 
-class DisabledWorkflowContext(
+class _DisabledWorkflowContext(
     Generic[TInitialPayload], AsyncWorkflowContext[TInitialPayload]
 ):
     __disabled_message = "disabled-qstash-worklfow-run"
 
-    async def _add_step(self, _step: BaseLazyStep[TResult]) -> TResult:
+    async def _add_step(self, _step: _BaseLazyStep[TResult]) -> TResult:
         raise WorkflowAbort(self.__disabled_message)
 
     async def cancel(self) -> None:
@@ -27,7 +27,7 @@ class DisabledWorkflowContext(
         ],
         context: AsyncWorkflowContext[TInitialPayload],
     ) -> Literal["run-ended", "step-found"]:
-        disabled_context = DisabledWorkflowContext(
+        disabled_context = _DisabledWorkflowContext(
             qstash_client=AsyncQStash(
                 base_url="disabled-client", token="disabled-client"
             ),
