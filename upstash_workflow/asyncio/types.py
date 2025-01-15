@@ -14,12 +14,18 @@ TResponse = TypeVar("TResponse")
 
 
 @dataclass
-class WorkflowServeOptions(Generic[TInitialPayload, TResponse]):
+class PublicServeOptions(Generic[TInitialPayload, TResponse]):
     qstash_client: AsyncQStash
-    on_step_finish: Callable[[str, _FinishCondition], TResponse]
     initial_payload_parser: Callable[[str], TInitialPayload]
     receiver: Optional[Receiver]
     base_url: Optional[str]
     env: Dict[str, Optional[str]]
     retries: int
     url: Optional[str]
+
+
+@dataclass
+class WorkflowServeOptions(
+    Generic[TInitialPayload, TResponse], PublicServeOptions[TInitialPayload, TResponse]
+):
+    on_step_finish: Callable[[str, _FinishCondition], TResponse]
