@@ -45,7 +45,7 @@ class _AutoExecutor:
         """
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
-            validate_step(lazy_step, step)
+            _validate_step(lazy_step, step)
             return step.out
 
         result_step = lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
@@ -123,9 +123,7 @@ class _AutoExecutor:
         raise WorkflowAbort(steps[0].step_name, steps[0])
 
 
-def validate_step(
-    lazy_step: _BaseLazyStep[Any], step_from_request: _DefaultStep
-) -> None:
+def _validate_step(lazy_step: _BaseLazyStep[Any], step_from_request: _DefaultStep) -> None:
     """
     Given a BaseLazyStep which is created during execution and a Step parsed
     from the incoming request; compare the step names and types to make sure
