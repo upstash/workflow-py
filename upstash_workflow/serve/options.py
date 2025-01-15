@@ -4,10 +4,10 @@ import re
 import logging
 from typing import Callable, Dict, Optional, cast, TypeVar, Match, Union
 from qstash import QStash, Receiver
-from upstash_workflow.workflow_types import Response, SyncRequest, AsyncRequest
+from upstash_workflow.workflow_types import _Response, _SyncRequest, _AsyncRequest
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
-    FinishCondition,
+    _FinishCondition,
     WorkflowServeOptions,
 )
 
@@ -17,10 +17,10 @@ TResponse = TypeVar("TResponse")
 TInitialPayload = TypeVar("TInitialPayload")
 
 
-def process_options(
+def _process_options(
     *,
     qstash_client: Optional[QStash] = None,
-    on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
+    on_step_finish: Optional[Callable[[str, _FinishCondition], TResponse]] = None,
     initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
     receiver: Optional[Receiver] = None,
     base_url: Optional[str] = None,
@@ -49,13 +49,13 @@ def process_options(
     )
 
     def _on_step_finish(
-        workflow_run_id: str, finish_condition: FinishCondition
+        workflow_run_id: str, finish_condition: _FinishCondition
     ) -> TResponse:
         if finish_condition == "auth-fail":
             _logger.error(AUTH_FAIL_MESSAGE)
             return cast(
                 TResponse,
-                Response(
+                _Response(
                     body={
                         "message": AUTH_FAIL_MESSAGE,
                         "workflowRunId": workflow_run_id,
@@ -65,7 +65,7 @@ def process_options(
             )
 
         return cast(
-            TResponse, Response(body={"workflowRunId": workflow_run_id}, status=200)
+            TResponse, _Response(body={"workflowRunId": workflow_run_id}, status=200)
         )
 
     def _initial_payload_parser(initial_request: str) -> TInitialPayload:
@@ -110,8 +110,8 @@ def process_options(
     )
 
 
-def determine_urls(
-    request: Union[SyncRequest, AsyncRequest],
+def _determine_urls(
+    request: Union[_SyncRequest, _AsyncRequest],
     url: Optional[str],
     base_url: Optional[str],
 ) -> str:

@@ -4,9 +4,9 @@ import json
 from qstash.message import BatchJsonRequest
 from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import WorkflowError, WorkflowAbort
-from upstash_workflow.workflow_requests import get_headers
-from upstash_workflow.types import DefaultStep, HTTPMethods
-from upstash_workflow.asyncio.context.steps import BaseLazyStep, LazyCallStep
+from upstash_workflow.workflow_requests import _get_headers
+from upstash_workflow.types import _DefaultStep, HTTPMethods
+from upstash_workflow.asyncio.context.steps import _BaseLazyStep, _LazyCallStep
 
 if TYPE_CHECKING:
     from upstash_workflow import AsyncWorkflowContext
@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 TResult = TypeVar("TResult")
 
 
-class AutoExecutor:
-    def __init__(self, context: AsyncWorkflowContext[Any], steps: List[DefaultStep]):
+class _AutoExecutor:
+    def __init__(self, context: AsyncWorkflowContext[Any], steps: List[_DefaultStep]):
         self.context: AsyncWorkflowContext[Any] = context
-        self.steps: List[DefaultStep] = steps
+        self.steps: List[_DefaultStep] = steps
         self.non_plan_step_count: int = len(
             [
                 step
@@ -29,11 +29,11 @@ class AutoExecutor:
         self.plan_step_count: int = 0
         self.executing_step: Union[str, Literal[False]] = False
 
-    async def add_step(self, step_info: BaseLazyStep[TResult]) -> TResult:
+    async def add_step(self, step_info: _BaseLazyStep[TResult]) -> TResult:
         self.step_count += 1
         return cast(TResult, await self.run_single(step_info))
 
-    async def run_single(self, lazy_step: BaseLazyStep[TResult]) -> Any:
+    async def run_single(self, lazy_step: _BaseLazyStep[TResult]) -> Any:
         """
         Executes a step:
         - If the step result is available in the steps, returns the result
@@ -45,7 +45,7 @@ class AutoExecutor:
         """
         if self.step_count < self.non_plan_step_count:
             step = self.steps[self.step_count + self.plan_step_count]
-            validate_step(lazy_step, step)
+            _validate_step(lazy_step, step)
             return step.out
 
         result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
@@ -53,7 +53,7 @@ class AutoExecutor:
         return result_step.out
 
     async def submit_steps_to_qstash(
-        self, steps: List[DefaultStep], lazy_steps: List[BaseLazyStep[Any]]
+        self, steps: List[_DefaultStep], lazy_steps: List[_BaseLazyStep[Any]]
     ) -> None:
         """
         sends the steps to QStash as batch
@@ -68,15 +68,15 @@ class AutoExecutor:
         batch_requests = []
         for index, single_step in enumerate(steps):
             lazy_step = lazy_steps[index]
-            headers = get_headers(
+            headers = _get_headers(
                 "false",
                 self.context.workflow_run_id,
                 self.context.url,
                 self.context.headers,
                 single_step,
                 self.context.retries,
-                lazy_step.retries if isinstance(lazy_step, LazyCallStep) else None,
-                lazy_step.timeout if isinstance(lazy_step, LazyCallStep) else None,
+                lazy_step.retries if isinstance(lazy_step, _LazyCallStep) else None,
+                lazy_step.timeout if isinstance(lazy_step, _LazyCallStep) else None,
             ).headers
 
             will_wait = (
@@ -123,7 +123,7 @@ class AutoExecutor:
         raise WorkflowAbort(steps[0].step_name, steps[0])
 
 
-def validate_step(lazy_step: BaseLazyStep[Any], step_from_request: DefaultStep) -> None:
+def _validate_step(lazy_step: _BaseLazyStep[Any], step_from_request: _DefaultStep) -> None:
     """
     Given a BaseLazyStep which is created during execution and a Step parsed
     from the incoming request; compare the step names and types to make sure

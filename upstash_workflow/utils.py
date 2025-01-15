@@ -8,11 +8,11 @@ NANOID_LENGTH = 21
 _logger = logging.getLogger(__name__)
 
 
-def nanoid() -> str:
+def _nanoid() -> str:
     return "".join([secrets.choice(NANOID_CHARS) for _ in range(NANOID_LENGTH)])
 
 
-def decode_base64(base64_str: str) -> str:
+def _decode_base64(base64_str: str) -> str:
     try:
         decoded_bytes = base64.b64decode(base64_str)
         return decoded_bytes.decode("utf-8")
