@@ -1,4 +1,4 @@
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fupstash%2Fworkflow-py%2Ftree%2Fmaster%2Fexamples%2Fnextjs-fastapi&env=QSTASH_TOKEN&envDescription=You%20can%20access%20this%20variable%20from%20Upstash%20Console%20under%20QStash%20page.&envLink=https%3A%2F%2Fconsole.upstash.com%2Fqstash&project-name=workflow-nextjs-fastapi&repository-name=workflow-nextjs-fastapi&demo-title=Upstash%20Workflow%20Example&demo-description=Next.js%20FastAPI%20application%20utilizing%20Upstash%20Workflow.)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fupstash%2Fworkflow-py%2Ftree%2Fmaster%2Fexamples%2Fnextjs-fastapi\&env=QSTASH_TOKEN\&envDescription=You%20can%20access%20this%20variable%20from%20Upstash%20Console%20under%20QStash%20page.\&envLink=https%3A%2F%2Fconsole.upstash.com%2Fqstash\&project-name=workflow-nextjs-fastapi\&repository-name=workflow-nextjs-fastapi\&demo-title=Upstash%20Workflow%20Example\&demo-description=Next.js%20FastAPI%20application%20utilizing%20Upstash%20Workflow.)
 
 # Upstash Workflow Next.js & FastAPI Example
 
@@ -30,7 +30,7 @@ You can observe the logs at [Upstash console under the Worfklow tab](https://con
 
 ## Local Development
 
-> [!TIP]
+> \[!TIP]
 > You can use [the `bootstrap.sh` script](https://github.com/upstash/workflow-py/tree/master/examples) to run this example with a local tunnel.
 >
 > Simply set the environment variables as explained below and run the following command in the `workflow-py/examples` directory:
@@ -39,17 +39,46 @@ You can observe the logs at [Upstash console under the Worfklow tab](https://con
 > bash bootstrap.sh nextjs-fastapi
 > ```
 
-Upstash Workflow needs a public URL to orchestrate the workflow. Check out our [Local Development](https://upstash.com/docs/workflow/howto/local-development) guide to learn how to set up a local tunnel.
-
-Create the tunnel and set the `UPSTASH_WORKFLOW_URL` environment variable in the `.env` file with the public URL:
+1. Create a virtual environment
 
 ```sh
-ngrok http localhost:8000
+python -m venv venv
+source venv/bin/activate
 ```
 
-Finally, run the app:
+2. Install the dependencies
 
-```sh
+```bash
+npm install
+```
+
+3. Get the credentials from the [Upstash Console](https://console.upstash.com/qstash) and add them to the `.env` file.
+
+```bash
+export QSTASH_TOKEN=
+```
+
+4. Open a local tunnel to port of the development server. Check out our [Local Development](https://upstash.com/docs/workflow/howto/local-development) guide to learn how to set up a local tunnel.
+
+```bash
+ngrok http 8000
+```
+
+Also, set the `UPSTASH_WORKLFOW_URL` environment variable to the public url provided by ngrok.
+
+```bash
+export UPSTASH_WORKFLOW_URL=
+```
+
+5. Set the environment variables
+
+```bash
+source .env
+```
+
+6. Run the development server
+
+```bash
 npm run dev
 ```
 

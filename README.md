@@ -12,7 +12,14 @@ Alternatively, you can check [our quickstarts for different frameworks](https://
 
 ### Install
 
-First, install the required packages:
+First, create a new directory and set up a virtual environment:
+
+```sh
+python -m venv venv
+source venv/bin/activate
+```
+
+Then, install the required packages:
 
 ```sh
 pip install fastapi uvicorn upstash-workflow
@@ -21,6 +28,10 @@ pip install fastapi uvicorn upstash-workflow
 ### Get QStash token
 
 Go to [Upstash Console](https://console.upstash.com/qstash) and copy the `QSTASH_TOKEN`, set it in the `.env` file.
+
+```sh
+export QSTASH_TOKEN=
+```
 
 ### Define a Workflow Endpoint
 
@@ -64,10 +75,10 @@ In the example, you can see that steps are declared through the `context` object
 
 The kinds of steps which are available are:
 
-- `context.run`: execute a function
-- `context.sleep`: sleep for some time
-- `context.sleep_until`: sleep until some timestamp
-- `context.call`: make a third party call without consuming any runtime
+* `context.run`: execute a function
+* `context.sleep`: sleep for some time
+* `context.sleep_until`: sleep until some timestamp
+* `context.call`: make a third party call without consuming any runtime
 
 You can [learn more about these methods from our documentation](https://upstash.com/docs/workflow/basics/context).
 
@@ -79,6 +90,16 @@ Create the tunnel and set the `UPSTASH_WORKFLOW_URL` environment variable in the
 
 ```sh
 ngrok http localhost:8000
+```
+
+```sh
+export UPSTASH_WORKFLOW_URL=
+```
+
+Then, set the environment variables:
+
+```sh
+source .env
 ```
 
 Finally, run the server:
