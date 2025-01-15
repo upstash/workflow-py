@@ -14,7 +14,7 @@ from qstash import QStash, Receiver
 from dataclasses import dataclass
 
 
-FinishCondition = Literal[
+_FinishCondition = Literal[
     "success",
     "duplicate-step",
     "fromCallback",
@@ -29,7 +29,7 @@ TResponse = TypeVar("TResponse")
 @dataclass
 class WorkflowServeOptions(Generic[TInitialPayload, TResponse]):
     qstash_client: QStash
-    on_step_finish: Callable[[str, FinishCondition], TResponse]
+    on_step_finish: Callable[[str, _FinishCondition], TResponse]
     initial_payload_parser: Callable[[str], TInitialPayload]
     receiver: Optional[Receiver]
     base_url: Optional[str]
@@ -66,7 +66,7 @@ TBody = TypeVar("TBody")
 
 
 @dataclass
-class Step(Generic[TResult, TBody]):
+class _Step(Generic[TResult, TBody]):
     step_id: int
     step_name: str
     step_type: StepType
@@ -83,23 +83,23 @@ class Step(Generic[TResult, TBody]):
     call_url: Optional[str] = None
 
 
-DefaultStep = Step[Any, Any]
+_DefaultStep = _Step[Any, Any]
 
 
 @dataclass
-class ValidateRequestResponse:
+class _ValidateRequestResponse:
     is_first_invocation: bool
     workflow_run_id: str
 
 
 @dataclass
-class ParseRequestResponse:
+class _ParseRequestResponse:
     raw_initial_payload: str
-    steps: List[DefaultStep]
+    steps: List[_DefaultStep]
 
 
 @dataclass
-class HeadersResponse:
+class _HeadersResponse:
     headers: Dict[str, str]
     timeout_headers: Optional[Dict[str, List[str]]] = None
 

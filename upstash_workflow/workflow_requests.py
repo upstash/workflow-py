@@ -24,8 +24,8 @@ from upstash_workflow.constants import (
     DEFAULT_CONTENT_TYPE,
     WORKFLOW_FEATURE_HEADER,
 )
-from upstash_workflow.types import StepTypes, DefaultStep, HeadersResponse
-from upstash_workflow.workflow_types import SyncRequest
+from upstash_workflow.types import StepTypes, _DefaultStep, _HeadersResponse
+from upstash_workflow.workflow_types import _SyncRequest
 
 if TYPE_CHECKING:
     from upstash_workflow import WorkflowContext
@@ -35,11 +35,11 @@ _logger = logging.getLogger(__name__)
 TInitialPayload = TypeVar("TInitialPayload")
 
 
-def trigger_first_invocation(
+def _trigger_first_invocation(
     workflow_context: WorkflowContext[TInitialPayload],
     retries: int,
 ) -> None:
-    headers = get_headers(
+    headers = _get_headers(
         "true",
         workflow_context.workflow_run_id,
         workflow_context.url,
@@ -55,7 +55,7 @@ def trigger_first_invocation(
     )
 
 
-def trigger_route_function(
+def _trigger_route_function(
     on_step: Callable[[], None], on_cleanup: Callable[[], None]
 ) -> None:
     try:
@@ -70,7 +70,7 @@ def trigger_route_function(
         raise error
 
 
-def trigger_workflow_delete(
+def _trigger_workflow_delete(
     workflow_context: WorkflowContext[TInitialPayload],
     cancel: Optional[bool] = False,
 ) -> None:
@@ -83,7 +83,7 @@ def trigger_workflow_delete(
         )
 
 
-def recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
+def _recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
     """
     Removes headers starting with `Upstash-Workflow-` from the headers
 
@@ -107,8 +107,8 @@ def recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
     return filtered_headers
 
 
-def handle_third_party_call_result(
-    request: SyncRequest,
+def _handle_third_party_call_result(
+    request: _SyncRequest,
     request_payload: str,
     client: QStash,
     workflow_url: str,
@@ -198,8 +198,8 @@ def handle_third_party_call_result(
             concurrent_str = cast(str, concurrent_str)
             content_type = cast(str, content_type)
 
-            user_headers = recreate_user_headers(headers)
-            request_headers = get_headers(
+            user_headers = _recreate_user_headers(headers)
+            request_headers = _get_headers(
                 "false",
                 workflow_run_id,
                 workflow_url,
@@ -241,16 +241,16 @@ def handle_third_party_call_result(
         )
 
 
-def get_headers(
+def _get_headers(
     init_header_value: Literal["true", "false"],
     workflow_run_id: str,
     workflow_url: str,
     user_headers: Optional[Dict[str, str]] = None,
-    step: Optional[DefaultStep] = None,
+    step: Optional[_DefaultStep] = None,
     retries: Optional[int] = None,
     call_retries: Optional[int] = None,
     call_timeout: Optional[Union[int, str]] = None,
-) -> HeadersResponse:
+) -> _HeadersResponse:
     """
     Gets headers for calling QStash
 
@@ -310,7 +310,7 @@ def get_headers(
             for header, value in step.call_headers.items()
         }
 
-        return HeadersResponse(
+        return _HeadersResponse(
             headers={
                 **base_headers,
                 **forwarded_headers,
@@ -332,10 +332,10 @@ def get_headers(
             }
         )
 
-    return HeadersResponse(headers=base_headers)
+    return _HeadersResponse(headers=base_headers)
 
 
-def verify_request(
+def _verify_request(
     body: str, signature: Union[str, None], verifier: Optional[Receiver]
 ) -> None:
     if not verifier:

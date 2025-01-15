@@ -18,8 +18,8 @@ from upstash_workflow.constants import (
     WORKFLOW_ID_HEADER,
 )
 from upstash_workflow.types import StepTypes
-from upstash_workflow.workflow_types import AsyncRequest
-from upstash_workflow.workflow_requests import get_headers, recreate_user_headers
+from upstash_workflow.workflow_types import _AsyncRequest
+from upstash_workflow.workflow_requests import _get_headers, _recreate_user_headers
 
 if TYPE_CHECKING:
     from upstash_workflow import AsyncWorkflowContext
@@ -29,11 +29,11 @@ _logger = logging.getLogger(__name__)
 TInitialPayload = TypeVar("TInitialPayload")
 
 
-async def trigger_first_invocation(
+async def _trigger_first_invocation(
     workflow_context: AsyncWorkflowContext[TInitialPayload],
     retries: int,
 ) -> None:
-    headers = get_headers(
+    headers = _get_headers(
         "true",
         workflow_context.workflow_run_id,
         workflow_context.url,
@@ -49,7 +49,7 @@ async def trigger_first_invocation(
     )
 
 
-async def trigger_route_function(
+async def _trigger_route_function(
     on_step: Callable[[], Awaitable[None]], on_cleanup: Callable[[], Awaitable[None]]
 ) -> None:
     try:
@@ -64,7 +64,7 @@ async def trigger_route_function(
         raise error
 
 
-async def trigger_workflow_delete(
+async def _trigger_workflow_delete(
     workflow_context: AsyncWorkflowContext[TInitialPayload],
     cancel: Optional[bool] = False,
 ) -> None:
@@ -77,8 +77,8 @@ async def trigger_workflow_delete(
         )
 
 
-async def handle_third_party_call_result(
-    request: AsyncRequest,
+async def _handle_third_party_call_result(
+    request: _AsyncRequest,
     request_payload: str,
     client: AsyncQStash,
     workflow_url: str,
@@ -168,8 +168,8 @@ async def handle_third_party_call_result(
             concurrent_str = cast(str, concurrent_str)
             content_type = cast(str, content_type)
 
-            user_headers = recreate_user_headers(headers)
-            request_headers = get_headers(
+            user_headers = _recreate_user_headers(headers)
+            request_headers = _get_headers(
                 "false",
                 workflow_run_id,
                 workflow_url,

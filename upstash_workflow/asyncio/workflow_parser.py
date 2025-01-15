@@ -1,8 +1,8 @@
 from typing import Optional
-from upstash_workflow.workflow_types import AsyncRequest
+from upstash_workflow.workflow_types import _AsyncRequest
 
 
-async def get_payload(request: AsyncRequest) -> Optional[str]:
+async def _get_payload(request: _AsyncRequest) -> Optional[str]:
     """
     Gets the request body. If that fails, returns None
 

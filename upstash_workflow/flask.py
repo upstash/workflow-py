@@ -3,11 +3,11 @@ from flask import Flask, request
 from werkzeug.wrappers import Response
 from typing import Callable, cast, TypeVar, Optional, Dict
 from qstash import QStash, Receiver
-from upstash_workflow import serve, WorkflowContext
-from upstash_workflow.types import FinishCondition
+from upstash_workflow import _serve_base, WorkflowContext
+from upstash_workflow.types import _FinishCondition
 from upstash_workflow.workflow_types import (
-    SyncRequest as WorkflowRequest,
-    Response as WorkflowResponse,
+    _SyncRequest as WorkflowRequest,
+    _Response as WorkflowResponse,
 )
 
 
@@ -26,7 +26,7 @@ class Serve:
         path: str,
         *,
         qstash_client: Optional[QStash] = None,
-        on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
+        on_step_finish: Optional[Callable[[str, _FinishCondition], TResponse]] = None,
         initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
         receiver: Optional[Receiver] = None,
         base_url: Optional[str] = None,
@@ -52,7 +52,7 @@ class Serve:
                     )
                 sync_handler = cast(
                     Callable[[WorkflowRequest], WorkflowResponse],
-                    serve(
+                    _serve_base(
                         route_function,
                         qstash_client=cast(QStash, qstash_client),
                         on_step_finish=on_step_finish,

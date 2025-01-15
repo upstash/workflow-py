@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 from typing import Callable, Awaitable, cast, TypeVar, Optional, Dict
 from qstash import AsyncQStash, Receiver
 from upstash_workflow import async_serve, AsyncWorkflowContext
-from upstash_workflow.types import FinishCondition
-from upstash_workflow.workflow_types import Response as WorkflowResponse
+from upstash_workflow.types import _FinishCondition
+from upstash_workflow.workflow_types import _Response as WorkflowResponse
 
 TInitialPayload = TypeVar("TInitialPayload")
 TResponse = TypeVar("TResponse")
@@ -23,7 +23,7 @@ class Serve:
         path: str,
         *,
         qstash_client: Optional[AsyncQStash] = None,
-        on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
+        on_step_finish: Optional[Callable[[str, _FinishCondition], TResponse]] = None,
         initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
         receiver: Optional[Receiver] = None,
         base_url: Optional[str] = None,

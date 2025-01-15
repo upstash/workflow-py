@@ -1,6 +1,6 @@
 import json
 from typing import Optional, List, Tuple, Union
-from upstash_workflow.utils import nanoid, decode_base64
+from upstash_workflow.utils import _nanoid, _decode_base64
 from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
     WORKFLOW_PROTOCOL_VERSION_HEADER,
@@ -9,15 +9,15 @@ from upstash_workflow.constants import (
 )
 from upstash_workflow.error import WorkflowError
 from upstash_workflow.types import (
-    Step,
-    DefaultStep,
-    ValidateRequestResponse,
-    ParseRequestResponse,
+    _Step,
+    _DefaultStep,
+    _ValidateRequestResponse,
+    _ParseRequestResponse,
 )
-from upstash_workflow.workflow_types import SyncRequest, AsyncRequest
+from upstash_workflow.workflow_types import _SyncRequest, _AsyncRequest
 
 
-def get_payload(request: SyncRequest) -> Optional[str]:
+def _get_payload(request: _SyncRequest) -> Optional[str]:
     """
     Gets the request body. If that fails, returns None
 
@@ -30,7 +30,7 @@ def get_payload(request: SyncRequest) -> Optional[str]:
         return None
 
 
-def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
+def _parse_payload(raw_payload: str) -> Tuple[str, List[_DefaultStep]]:
     """
     Parses a request coming from QStash. First parses the string as JSON, which will result
     in a list of objects with messageId & body fields. Body will be base64 encoded.
@@ -48,7 +48,7 @@ def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
 
     encoded_initial_payload, *encoded_steps = raw_steps
 
-    raw_initial_payload = decode_base64(encoded_initial_payload["body"])
+    raw_initial_payload = _decode_base64(encoded_initial_payload["body"])
 
     initial_step = {
         "stepId": 0,
@@ -62,7 +62,7 @@ def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
 
     other_steps = []
     for raw_step in steps_to_decode:
-        step = json.loads(decode_base64(raw_step["body"]))
+        step = json.loads(_decode_base64(raw_step["body"]))
 
         try:
             step["out"] = json.loads(step["out"])
@@ -71,7 +71,7 @@ def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
 
         if step.get("waitEventId", None):
             new_out = {
-                "event_data": decode_base64(step["out"]) if step["out"] else None,
+                "event_data": _decode_base64(step["out"]) if step["out"] else None,
                 "timeout": step.wait_timeout or False,
             }
             step["out"] = new_out
@@ -80,10 +80,10 @@ def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
 
     all_steps = [initial_step] + other_steps
 
-    parsed_steps: List[DefaultStep] = []
+    parsed_steps: List[_DefaultStep] = []
     for step in all_steps:
         parsed_steps.append(
-            Step(
+            _Step(
                 step_id=step["stepId"],
                 step_name=step["stepName"],
                 step_type=step["stepType"],
@@ -95,9 +95,9 @@ def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
     return raw_initial_payload, parsed_steps
 
 
-def validate_request(
-    request: Union[SyncRequest, AsyncRequest],
-) -> ValidateRequestResponse:
+def _validate_request(
+    request: Union[_SyncRequest, _AsyncRequest],
+) -> _ValidateRequestResponse:
     """
     Validates the incoming request checking the workflow protocol
     version and whether it is the first invocation.
@@ -128,7 +128,7 @@ def validate_request(
 
     # Generate or get workflow ID
     if is_first_invocation:
-        workflow_run_id = f"wfr_{nanoid()}"
+        workflow_run_id = f"wfr_{_nanoid()}"
     else:
         workflow_run_id = (
             request.headers.get(WORKFLOW_ID_HEADER, "") if request.headers else ""
@@ -137,14 +137,14 @@ def validate_request(
     if not workflow_run_id:
         raise WorkflowError("Couldn't get workflow id from header")
 
-    return ValidateRequestResponse(
+    return _ValidateRequestResponse(
         is_first_invocation=is_first_invocation, workflow_run_id=workflow_run_id
     )
 
 
-def parse_request(
+def _parse_request(
     request_payload: Optional[str], is_first_invocation: bool
-) -> ParseRequestResponse:
+) -> _ParseRequestResponse:
     """
     Checks request headers and body
     - Reads the request body as raw text
@@ -155,7 +155,7 @@ def parse_request(
     :return: raw initial payload and the steps
     """
     if is_first_invocation:
-        return ParseRequestResponse(
+        return _ParseRequestResponse(
             raw_initial_payload=(request_payload or ""),
             steps=[],
         )
@@ -163,8 +163,8 @@ def parse_request(
         if not request_payload:
             raise WorkflowError("Only first call can have an empty body")
 
-        raw_initial_payload, steps = parse_payload(request_payload)
+        raw_initial_payload, steps = _parse_payload(request_payload)
 
-        return ParseRequestResponse(
+        return _ParseRequestResponse(
             raw_initial_payload=raw_initial_payload, steps=steps
         )
