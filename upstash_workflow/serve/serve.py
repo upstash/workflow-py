@@ -41,21 +41,6 @@ def _serve_base(
     retries: Optional[int] = None,
     url: Optional[str] = None,
 ) -> Dict[str, Callable[[TRequest], TResponse]]:
-    """
-    Creates a method that handles incoming requests and runs the provided
-    route function as a workflow.
-
-    :param route_function: A function that uses WorkflowContext as a parameter and runs a workflow.
-    :param qstash_client: QStash client
-    :param on_step_finish: Function called to return a response after each step execution
-    :param initial_payload_parser: Function to parse the initial payload passed by the user
-    :param receiver: Receiver to verify *all* requests by checking if they come from QStash. By default, a receiver is created from the env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY if they are set.
-    :param base_url: Base Url of the workflow endpoint. Can be used to set if there is a local tunnel or a proxy between QStash and the workflow endpoint. Will be set to the env variable UPSTASH_WORKFLOW_URL if not passed. If the env variable is not set, the url will be infered as usual from the `request.url` or the `url` parameter in `serve` options.
-    :param env: Optionally, one can pass an env object mapping environment variables to their keys. Useful in cases like cloudflare with hono.
-    :param retries: Number of retries to use in workflow requests, 3 by default
-    :param url: Url of the endpoint where the workflow is set up. If not set, url will be inferred from the request.
-    :return: An method that consumes incoming requests and runs the workflow.
-    """
     processed_options = _process_options(
         qstash_client=qstash_client,
         on_step_finish=on_step_finish,
@@ -166,3 +151,41 @@ def _serve_base(
             )
 
     return {"handler": _safe_handler}
+
+
+def serve(
+    route_function: Callable[[WorkflowContext[TInitialPayload]], None],
+    *,
+    qstash_client: Optional[QStash] = None,
+    initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
+    receiver: Optional[Receiver] = None,
+    base_url: Optional[str] = None,
+    env: Optional[Dict[str, Optional[str]]] = None,
+    retries: Optional[int] = None,
+    url: Optional[str] = None,
+) -> Dict[str, Callable[[TRequest], TResponse]]:
+    """
+    Creates a method that handles incoming requests and runs the provided
+    route function as a workflow.
+
+    :param route_function: A function that uses WorkflowContext as a parameter and runs a workflow.
+    :param qstash_client: QStash client
+    :param on_step_finish: Function called to return a response after each step execution
+    :param initial_payload_parser: Function to parse the initial payload passed by the user
+    :param receiver: Receiver to verify *all* requests by checking if they come from QStash. By default, a receiver is created from the env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY if they are set.
+    :param base_url: Base Url of the workflow endpoint. Can be used to set if there is a local tunnel or a proxy between QStash and the workflow endpoint. Will be set to the env variable UPSTASH_WORKFLOW_URL if not passed. If the env variable is not set, the url will be infered as usual from the `request.url` or the `url` parameter in `serve` options.
+    :param env: Optionally, one can pass an env object mapping environment variables to their keys. Useful in cases like cloudflare with hono.
+    :param retries: Number of retries to use in workflow requests, 3 by default
+    :param url: Url of the endpoint where the workflow is set up. If not set, url will be inferred from the request.
+    :return: An method that consumes incoming requests and runs the workflow.
+    """
+    return _serve_base(
+        route_function,
+        qstash_client=qstash_client,
+        initial_payload_parser=initial_payload_parser,
+        receiver=receiver,
+        base_url=base_url,
+        env=env,
+        retries=retries,
+        url=url,
+    )

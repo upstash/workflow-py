@@ -22,7 +22,7 @@ from upstash_workflow.context.steps import (
     _BaseLazyStep,
 )
 from upstash_workflow.types import (
-    _DefaultStep,
+    DefaultStep,
     HTTPMethods,
     CallResponse,
     CallResponseDict,
@@ -44,7 +44,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         qstash_client: QStash,
         workflow_run_id: str,
         headers: Dict[str, str],
-        steps: List[_DefaultStep],
+        steps: List[DefaultStep],
         url: str,
         initial_payload: TInitialPayload,
         env: Optional[Dict[str, Optional[str]]] = None,
@@ -52,7 +52,7 @@ class WorkflowContext(Generic[TInitialPayload]):
     ):
         self.qstash_client: QStash = qstash_client
         self.workflow_run_id: str = workflow_run_id
-        self._steps: List[_DefaultStep] = steps
+        self._steps: List[DefaultStep] = steps
         self.url: str = url
         self.headers: Dict[str, str] = headers
         self.request_payload: TInitialPayload = initial_payload

@@ -72,7 +72,7 @@ TBody = TypeVar("TBody")
 
 
 @dataclass
-class _Step(Generic[TResult, TBody]):
+class Step(Generic[TResult, TBody]):
     step_id: int
     step_name: str
     step_type: StepType
@@ -89,7 +89,7 @@ class _Step(Generic[TResult, TBody]):
     call_url: Optional[str] = None
 
 
-_DefaultStep = _Step[Any, Any]
+DefaultStep = Step[Any, Any]
 
 
 @dataclass
@@ -101,7 +101,7 @@ class _ValidateRequestResponse:
 @dataclass
 class _ParseRequestResponse:
     raw_initial_payload: str
-    steps: List[_DefaultStep]
+    steps: List[DefaultStep]
 
 
 @dataclass

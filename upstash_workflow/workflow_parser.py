@@ -9,8 +9,8 @@ from upstash_workflow.constants import (
 )
 from upstash_workflow.error import WorkflowError
 from upstash_workflow.types import (
-    _Step,
-    _DefaultStep,
+    Step,
+    DefaultStep,
     _ValidateRequestResponse,
     _ParseRequestResponse,
 )
@@ -30,7 +30,7 @@ def _get_payload(request: _SyncRequest) -> Optional[str]:
         return None
 
 
-def _parse_payload(raw_payload: str) -> Tuple[str, List[_DefaultStep]]:
+def _parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
     """
     Parses a request coming from QStash. First parses the string as JSON, which will result
     in a list of objects with messageId & body fields. Body will be base64 encoded.
@@ -80,10 +80,10 @@ def _parse_payload(raw_payload: str) -> Tuple[str, List[_DefaultStep]]:
 
     all_steps = [initial_step] + other_steps
 
-    parsed_steps: List[_DefaultStep] = []
+    parsed_steps: List[DefaultStep] = []
     for step in all_steps:
         parsed_steps.append(
-            _Step(
+            Step(
                 step_id=step["stepId"],
                 step_name=step["stepName"],
                 step_type=step["stepType"],

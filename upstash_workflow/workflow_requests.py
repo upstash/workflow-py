@@ -24,7 +24,7 @@ from upstash_workflow.constants import (
     DEFAULT_CONTENT_TYPE,
     WORKFLOW_FEATURE_HEADER,
 )
-from upstash_workflow.types import StepTypes, _DefaultStep, _HeadersResponse
+from upstash_workflow.types import StepTypes, DefaultStep, _HeadersResponse
 from upstash_workflow.workflow_types import _SyncRequest
 
 if TYPE_CHECKING:
@@ -246,7 +246,7 @@ def _get_headers(
     workflow_run_id: str,
     workflow_url: str,
     user_headers: Optional[Dict[str, str]] = None,
-    step: Optional[_DefaultStep] = None,
+    step: Optional[DefaultStep] = None,
     retries: Optional[int] = None,
     call_retries: Optional[int] = None,
     call_timeout: Optional[Union[int, str]] = None,

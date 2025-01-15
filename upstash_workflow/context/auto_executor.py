@@ -5,7 +5,7 @@ from qstash.message import BatchJsonRequest
 from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.workflow_requests import _get_headers
-from upstash_workflow.types import _DefaultStep, HTTPMethods
+from upstash_workflow.types import DefaultStep, HTTPMethods
 from upstash_workflow.context.steps import _BaseLazyStep, _LazyCallStep
 
 if TYPE_CHECKING:
@@ -15,9 +15,9 @@ TResult = TypeVar("TResult")
 
 
 class _AutoExecutor:
-    def __init__(self, context: WorkflowContext[Any], steps: List[_DefaultStep]):
+    def __init__(self, context: WorkflowContext[Any], steps: List[DefaultStep]):
         self.context: WorkflowContext[Any] = context
-        self.steps: List[_DefaultStep] = steps
+        self.steps: List[DefaultStep] = steps
         self.non_plan_step_count: int = len(
             [
                 step
@@ -53,7 +53,7 @@ class _AutoExecutor:
         return result_step.out
 
     def submit_steps_to_qstash(
-        self, steps: List[_DefaultStep], lazy_steps: List[_BaseLazyStep[Any]]
+        self, steps: List[DefaultStep], lazy_steps: List[_BaseLazyStep[Any]]
     ) -> None:
         """
         sends the steps to QStash as batch
@@ -123,7 +123,9 @@ class _AutoExecutor:
         raise WorkflowAbort(steps[0].step_name, steps[0])
 
 
-def _validate_step(lazy_step: _BaseLazyStep[Any], step_from_request: _DefaultStep) -> None:
+def _validate_step(
+    lazy_step: _BaseLazyStep[Any], step_from_request: DefaultStep
+) -> None:
     """
     Given a BaseLazyStep which is created during execution and a Step parsed
     from the incoming request; compare the step names and types to make sure
