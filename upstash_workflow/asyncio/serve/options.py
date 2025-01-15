@@ -8,7 +8,7 @@ from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
     _FinishCondition,
 )
-from upstash_workflow.asyncio.types import WorkflowServeOptions
+from upstash_workflow.asyncio.types import ServeBaseOptions
 
 _logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def _process_options(
     env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
-) -> WorkflowServeOptions[TInitialPayload, TResponse]:
+) -> ServeBaseOptions[TInitialPayload, TResponse]:
     environment = env if env is not None else dict(os.environ)
 
     receiver_environment_variables_set = bool(
@@ -69,7 +69,7 @@ def _process_options(
             # If not a JSON parsing error, re-raise
             raise error
 
-    return WorkflowServeOptions[TInitialPayload, TResponse](
+    return ServeBaseOptions[TInitialPayload, TResponse](
         qstash_client=qstash_client
         or AsyncQStash(
             cast(str, environment.get("QSTASH_TOKEN", "")),

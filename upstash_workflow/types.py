@@ -27,7 +27,7 @@ TResponse = TypeVar("TResponse")
 
 
 @dataclass
-class PublicServeOptions(Generic[TInitialPayload, TResponse]):
+class ServeOptions(Generic[TInitialPayload, TResponse]):
     qstash_client: QStash
     initial_payload_parser: Callable[[str], TInitialPayload]
     receiver: Optional[Receiver]
@@ -38,8 +38,8 @@ class PublicServeOptions(Generic[TInitialPayload, TResponse]):
 
 
 @dataclass
-class WorkflowServeOptions(
-    Generic[TInitialPayload, TResponse], PublicServeOptions[TInitialPayload, TResponse]
+class ServeBaseOptions(
+    Generic[TInitialPayload, TResponse], ServeOptions[TInitialPayload, TResponse]
 ):
     on_step_finish: Callable[[str, _FinishCondition], TResponse]
 

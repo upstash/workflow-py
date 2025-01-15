@@ -8,7 +8,7 @@ from upstash_workflow.workflow_types import _Response, _SyncRequest, _AsyncReque
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
     _FinishCondition,
-    WorkflowServeOptions,
+    ServeBaseOptions,
 )
 
 _logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def _process_options(
     env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
-) -> WorkflowServeOptions[TInitialPayload, TResponse]:
+) -> ServeBaseOptions[TInitialPayload, TResponse]:
     """
     Fills the options with default values if they are not provided.
 
@@ -83,7 +83,7 @@ def _process_options(
             # If not a JSON parsing error, re-raise
             raise error
 
-    return WorkflowServeOptions[TInitialPayload, TResponse](
+    return ServeBaseOptions[TInitialPayload, TResponse](
         qstash_client=qstash_client
         or QStash(
             cast(str, environment.get("QSTASH_TOKEN", "")),
