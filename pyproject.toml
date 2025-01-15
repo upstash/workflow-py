@@ -37,6 +37,9 @@ qstash = "^2.0.2"
 [tool.poetry.group.fastapi.dependencies]
 fastapi = "^0.115.0"
 
+[tool.poetry.group.flask.dependencies]
+Flask = "^3.0.3"
+
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.0"
 mypy = "^1.10.0"

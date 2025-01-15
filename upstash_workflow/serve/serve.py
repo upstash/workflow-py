@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Optional, Callable, Dict, cast, TypeVar, Any
 from qstash import QStash, Receiver
-from upstash_workflow.workflow_types import Response, Request
+from upstash_workflow.workflow_types import Response, SyncRequest
 from upstash_workflow.workflow_parser import (
     get_payload,
     validate_request,
@@ -25,7 +25,7 @@ from upstash_workflow.serve.authorization import DisabledWorkflowContext
 _logger = logging.getLogger(__name__)
 
 TInitialPayload = TypeVar("TInitialPayload")
-TRequest = TypeVar("TRequest", bound=Request)
+TRequest = TypeVar("TRequest", bound=SyncRequest)
 TResponse = TypeVar("TResponse")
 
 
@@ -85,7 +85,7 @@ def serve(
         :param request: The incoming request to handle.
         :return: A response.
         """
-        workflow_url = determine_urls(cast(Request, request), url, base_url)
+        workflow_url = determine_urls(cast(SyncRequest, request), url, base_url)
 
         request_payload = get_payload(request) or ""
         verify_request(

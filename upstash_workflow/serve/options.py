@@ -2,9 +2,9 @@ import os
 import json
 import re
 import logging
-from typing import Callable, Dict, Optional, cast, TypeVar, Match
+from typing import Callable, Dict, Optional, cast, TypeVar, Match, Union
 from qstash import QStash, Receiver
-from upstash_workflow.workflow_types import Response, Request
+from upstash_workflow.workflow_types import Response, SyncRequest, AsyncRequest
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
     FinishCondition,
@@ -111,7 +111,7 @@ def process_options(
 
 
 def determine_urls(
-    request: Request,
+    request: Union[SyncRequest, AsyncRequest],
     url: Optional[str],
     base_url: Optional[str],
 ) -> str:

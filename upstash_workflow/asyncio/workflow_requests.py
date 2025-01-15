@@ -18,7 +18,7 @@ from upstash_workflow.constants import (
     WORKFLOW_ID_HEADER,
 )
 from upstash_workflow.types import StepTypes
-from upstash_workflow.workflow_types import Request
+from upstash_workflow.workflow_types import AsyncRequest
 from upstash_workflow.workflow_requests import get_headers, recreate_user_headers
 
 if TYPE_CHECKING:
@@ -78,7 +78,7 @@ async def trigger_workflow_delete(
 
 
 async def handle_third_party_call_result(
-    request: Request,
+    request: AsyncRequest,
     request_payload: str,
     client: AsyncQStash,
     workflow_url: str,
