@@ -21,6 +21,8 @@ cd examples/$project_arg
 pip install -r requirements.txt
 if [ "$project_arg" == "nextjs-fastapi" ]; then
     npm install
+elif [ "$project_arg" == "nextjs-flask" ]; then
+    npm install
 fi
 
 # Start ngrok and capture the public URL
@@ -42,6 +44,8 @@ if [ "$project_arg" == "fastapi" ]; then
 elif [ "$project_arg" == "flask" ]; then
     flask --app main run -p 8000
 elif [ "$project_arg" == "nextjs-fastapi" ]; then
+    npm run dev
+elif [ "$project_arg" == "nextjs-flask" ]; then
     npm run dev
 else
     echo "Invalid project argument."
