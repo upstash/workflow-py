@@ -1,5 +1,5 @@
 import json
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 from upstash_workflow.utils import nanoid, decode_base64
 from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
@@ -14,10 +14,10 @@ from upstash_workflow.types import (
     ValidateRequestResponse,
     ParseRequestResponse,
 )
-from upstash_workflow.workflow_types import Request
+from upstash_workflow.workflow_types import SyncRequest, AsyncRequest
 
 
-def get_payload(request: Request) -> Optional[str]:
+def get_payload(request: SyncRequest) -> Optional[str]:
     """
     Gets the request body. If that fails, returns None
 
@@ -25,7 +25,7 @@ def get_payload(request: Request) -> Optional[str]:
     :return: request body
     """
     try:
-        return json.dumps(request.json() or request.get_json())
+        return request.body
     except Exception:
         return None
 
@@ -95,7 +95,9 @@ def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
     return raw_initial_payload, parsed_steps
 
 
-def validate_request(request: Request) -> ValidateRequestResponse:
+def validate_request(
+    request: Union[SyncRequest, AsyncRequest],
+) -> ValidateRequestResponse:
     """
     Validates the incoming request checking the workflow protocol
     version and whether it is the first invocation.

@@ -1,9 +1,12 @@
 from inspect import iscoroutinefunction
-from fastapi import FastAPI, Request, Response
+import json
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from typing import Callable, Awaitable, cast, TypeVar, Optional, Dict
 from qstash import AsyncQStash, Receiver
 from upstash_workflow import async_serve, AsyncWorkflowContext
 from upstash_workflow.types import FinishCondition
+from upstash_workflow.workflow_types import Response as WorkflowResponse
 
 TInitialPayload = TypeVar("TInitialPayload")
 TResponse = TypeVar("TResponse")
@@ -54,7 +57,7 @@ class Serve:
                         "qstash_client must be an instance of AsyncQStash when using an async route function"
                     )
                 async_handler = cast(
-                    Callable[[Request], Awaitable[Response]],
+                    Callable[[Request], Awaitable[WorkflowResponse]],
                     async_serve(
                         cast(AsyncRouteFunction[TInitialPayload], route_function),
                         qstash_client=cast(AsyncQStash, qstash_client),
@@ -68,8 +71,13 @@ class Serve:
                     ).get("handler"),
                 )
 
-                async def _async_handler_wrapper(request: Request) -> Response:
-                    return await async_handler(request)
+                async def _async_handler_wrapper(request: Request) -> JSONResponse:
+                    workflow_response: WorkflowResponse = await async_handler(request)
+                    return JSONResponse(
+                        content=json.loads(workflow_response.body),
+                        status_code=workflow_response.status,
+                        headers=workflow_response.headers,
+                    )
 
                 self.app.add_api_route(path, _async_handler_wrapper, methods=["POST"])
 

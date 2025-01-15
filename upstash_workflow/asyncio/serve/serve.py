@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Optional, Callable, Awaitable, Dict, cast, TypeVar, Any
 from qstash import AsyncQStash, Receiver
-from upstash_workflow.workflow_types import Response, Request
+from upstash_workflow.workflow_types import Response, AsyncRequest
 from upstash_workflow.asyncio.workflow_parser import (
     get_payload,
 )
@@ -24,7 +24,7 @@ from upstash_workflow.asyncio.serve.authorization import DisabledWorkflowContext
 _logger = logging.getLogger(__name__)
 
 TInitialPayload = TypeVar("TInitialPayload")
-TRequest = TypeVar("TRequest", bound=Request)
+TRequest = TypeVar("TRequest", bound=AsyncRequest)
 TResponse = TypeVar("TResponse")
 
 
@@ -60,7 +60,7 @@ def serve(
     url = processed_options.url
 
     async def _handler(request: TRequest) -> TResponse:
-        workflow_url = determine_urls(cast(Request, request), url, base_url)
+        workflow_url = determine_urls(cast(AsyncRequest, request), url, base_url)
 
         request_payload = await get_payload(request) or ""
         verify_request(

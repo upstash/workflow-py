@@ -1,9 +1,8 @@
-import json
 from typing import Optional
-from upstash_workflow.workflow_types import Request
+from upstash_workflow.workflow_types import AsyncRequest
 
 
-async def get_payload(request: Request) -> Optional[str]:
+async def get_payload(request: AsyncRequest) -> Optional[str]:
     """
     Gets the request body. If that fails, returns None
 
@@ -11,6 +10,6 @@ async def get_payload(request: Request) -> Optional[str]:
     :return: request body
     """
     try:
-        return json.dumps(await request.json())
+        return (await request.body()).decode()
     except Exception:
         return None

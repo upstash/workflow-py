@@ -25,7 +25,7 @@ from upstash_workflow.constants import (
     WORKFLOW_FEATURE_HEADER,
 )
 from upstash_workflow.types import StepTypes, DefaultStep, HeadersResponse
-from upstash_workflow.workflow_types import Request
+from upstash_workflow.workflow_types import SyncRequest
 
 if TYPE_CHECKING:
     from upstash_workflow import WorkflowContext
@@ -108,7 +108,7 @@ def recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
 
 
 def handle_third_party_call_result(
-    request: Request,
+    request: SyncRequest,
     request_payload: str,
     client: QStash,
     workflow_url: str,

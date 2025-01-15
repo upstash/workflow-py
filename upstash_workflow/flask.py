@@ -1,62 +1,85 @@
 from inspect import iscoroutinefunction
 from flask import Flask, request
-from werkzeug.wrappers import Request, Response
-from typing import Callable, Awaitable, cast, TypeVar, Union
-from upstash_workflow.serve.serve import serve
-from upstash_workflow.context.context import WorkflowContext
-from upstash_workflow.asyncio.serve.serve import serve as async_serve
-from upstash_workflow.asyncio.context.context import (
-    WorkflowContext as AsyncWorkflowContext,
+from werkzeug.wrappers import Response
+from typing import Callable, cast, TypeVar, Optional, Dict
+from qstash import QStash, Receiver
+from upstash_workflow import serve, WorkflowContext
+from upstash_workflow.types import FinishCondition
+from upstash_workflow.workflow_types import (
+    SyncRequest as WorkflowRequest,
+    Response as WorkflowResponse,
 )
 
+
 TInitialPayload = TypeVar("TInitialPayload")
+TResponse = TypeVar("TResponse")
 
 RouteFunction = Callable[[WorkflowContext[TInitialPayload]], None]
-AsyncRouteFunction = Callable[[AsyncWorkflowContext[TInitialPayload]], Awaitable[None]]
 
 
 class Serve:
     def __init__(self, app: Flask):
         self.app = app
 
-    def post(self, path: str) -> Callable[
-        [Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]],
-        Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]],
+    def route(
+        self,
+        path: str,
+        *,
+        qstash_client: Optional[QStash] = None,
+        on_step_finish: Optional[Callable[[str, FinishCondition], TResponse]] = None,
+        initial_payload_parser: Optional[Callable[[str], TInitialPayload]] = None,
+        receiver: Optional[Receiver] = None,
+        base_url: Optional[str] = None,
+        env: Optional[Dict[str, Optional[str]]] = None,
+        retries: Optional[int] = None,
+        url: Optional[str] = None,
+    ) -> Callable[
+        [RouteFunction[TInitialPayload]],
+        RouteFunction[TInitialPayload],
     ]:
         def decorator(
-            route_function: Union[
-                RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]
-            ],
-        ) -> Union[RouteFunction[TInitialPayload], AsyncRouteFunction[TInitialPayload]]:
+            route_function: RouteFunction[TInitialPayload],
+        ) -> RouteFunction[TInitialPayload]:
             if iscoroutinefunction(route_function):
-                async_handler = cast(
-                    Callable[[Request], Awaitable[Response]],
-                    async_serve(
-                        cast(AsyncRouteFunction[TInitialPayload], route_function)
-                    ).get("handler"),
-                )
-
-                async def _async_handler_wrapper() -> Response:
-                    return await async_handler(request)
-
-                self.app.add_url_rule(
-                    path,
-                    route_function.__name__,
-                    _async_handler_wrapper,
-                    methods=["POST"],
+                raise ValueError(
+                    "route_function must be a sync function when using the @serve.route decorator"
                 )
 
             else:
+                if qstash_client and not isinstance(qstash_client, QStash):
+                    raise ValueError(
+                        "qstash_client must be an instance of QStash when using a sync route function"
+                    )
                 sync_handler = cast(
-                    Callable[[Request], Response],
-                    serve(cast(RouteFunction[TInitialPayload], route_function)).get(
-                        "handler"
-                    ),
+                    Callable[[WorkflowRequest], WorkflowResponse],
+                    serve(
+                        route_function,
+                        qstash_client=cast(QStash, qstash_client),
+                        on_step_finish=on_step_finish,
+                        initial_payload_parser=initial_payload_parser,
+                        receiver=receiver,
+                        base_url=base_url,
+                        env=env,
+                        retries=retries,
+                        url=url,
+                    ).get("handler"),
                 )
 
                 def _sync_handler_wrapper() -> Response:
-                    print(request.get_json())
-                    return sync_handler(request)
+                    workflow_response: WorkflowResponse = sync_handler(
+                        WorkflowRequest(
+                            body=request.data.decode("utf-8"),
+                            headers=cast(Dict[str, str], request.headers),
+                            method=request.method,
+                            url=request.url,
+                            query=request.args,
+                        )
+                    )
+                    return Response(
+                        workflow_response.body,
+                        status=workflow_response.status,
+                        headers=workflow_response.headers,
+                    )
 
                 self.app.add_url_rule(
                     path,

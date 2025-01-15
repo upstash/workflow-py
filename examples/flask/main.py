@@ -2,8 +2,7 @@ from flask import Flask
 from typing import Dict
 import time
 from upstash_workflow.flask import Serve
-from upstash_workflow.context.context import WorkflowContext
-from upstash_workflow.types import CallResponse
+from upstash_workflow import WorkflowContext, CallResponse
 
 app = Flask(__name__)
 serve = Serve(app)
@@ -18,7 +17,7 @@ def some_work(input: str) -> str:
     return f"processed '{input}'"
 
 
-@serve.post("/sleep")
+@serve.route("/sleep")
 def sleep(context: WorkflowContext[str]) -> None:
     input = context.request_payload
 
@@ -47,12 +46,12 @@ def sleep(context: WorkflowContext[str]) -> None:
     context.run("step3", _step3)
 
 
-@app.route("/get-data")
+@app.route("/get-data", methods=["POST"])
 def get_data() -> Dict[str, str]:
     return {"message": "get data response"}
 
 
-@serve.post("/call")
+@serve.route("/call")
 def call(context: WorkflowContext[str]) -> None:
     input = context.request_payload
 
@@ -78,9 +77,9 @@ def call(context: WorkflowContext[str]) -> None:
     context.run("step2", _step2)
 
 
-@serve.post("/auth")
+@serve.route("/auth")
 def auth(context: WorkflowContext[str]) -> None:
-    if context.headers.get("authentication") != "Bearer secret_password":
+    if context.headers.get("Authentication") != "Bearer secret_password":
         print("Authentication failed.")
         return
 
