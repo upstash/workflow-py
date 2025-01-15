@@ -18,7 +18,7 @@ from upstash_workflow.workflow_requests import (
 )
 from upstash_workflow.serve.options import process_options, determine_urls
 from upstash_workflow.error import format_workflow_error
-from upstash_workflow.context.context import WorkflowContext
+from upstash_workflow import WorkflowContext
 from upstash_workflow.types import FinishCondition
 from upstash_workflow.serve.authorization import DisabledWorkflowContext
 
@@ -41,6 +41,21 @@ def serve(
     retries: Optional[int] = None,
     url: Optional[str] = None,
 ) -> Dict[str, Callable[[TRequest], TResponse]]:
+    """
+    Creates a method that handles incoming requests and runs the provided
+    route function as a workflow.
+
+    :param route_function: A function that uses WorkflowContext as a parameter and runs a workflow.
+    :param qstash_client: QStash client
+    :param on_step_finish: Function called to return a response after each step execution
+    :param initial_payload_parser: Function to parse the initial payload passed by the user
+    :param receiver: Receiver to verify *all* requests by checking if they come from QStash. By default, a receiver is created from the env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY if they are set.
+    :param base_url: Base Url of the workflow endpoint. Can be used to set if there is a local tunnel or a proxy between QStash and the workflow endpoint. Will be set to the env variable UPSTASH_WORKFLOW_URL if not passed. If the env variable is not set, the url will be infered as usual from the `request.url` or the `url` parameter in `serve` options.
+    :param env: Optionally, one can pass an env object mapping environment variables to their keys. Useful in cases like cloudflare with hono.
+    :param retries: Number of retries to use in workflow requests, 3 by default
+    :param url: Url of the endpoint where the workflow is set up. If not set, url will be inferred from the request.
+    :return: An method that consumes incoming requests and runs the workflow.
+    """
     processed_options = process_options(
         qstash_client=qstash_client,
         on_step_finish=on_step_finish,
@@ -61,6 +76,15 @@ def serve(
     url = processed_options.url
 
     def _handler(request: TRequest) -> TResponse:
+        """
+        Handles the incoming request, triggering the appropriate workflow steps.
+        Calls `trigger_first_invocation()` if it's the first invocation.
+        Otherwise, starts calling `trigger_route_function()` to execute steps in the workflow.
+        Finally, calls `trigger_workflow_delete()` to remove the workflow from QStash.
+
+        :param request: The incoming request to handle.
+        :return: A response.
+        """
         workflow_url = determine_urls(cast(Request, request), url, base_url)
 
         request_payload = get_payload(request) or ""

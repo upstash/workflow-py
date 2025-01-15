@@ -18,6 +18,12 @@ from upstash_workflow.workflow_types import Request
 
 
 def get_payload(request: Request) -> Optional[str]:
+    """
+    Gets the request body. If that fails, returns None
+
+    :param request: request received in the workflow api
+    :return: request body
+    """
     try:
         return json.dumps(request.json() or request.get_json())
     except Exception:
@@ -25,6 +31,19 @@ def get_payload(request: Request) -> Optional[str]:
 
 
 def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
+    """
+    Parses a request coming from QStash. First parses the string as JSON, which will result
+    in a list of objects with messageId & body fields. Body will be base64 encoded.
+
+    Body of the first item will be the body of the first request received in the workflow API.
+    Rest are steps in Upstash Workflow Step format.
+
+    When returning steps, we add the initial payload as initial step. This is to make it simpler
+    in the rest of the code.
+
+    :param raw_payload: body of the request as a string as explained above
+    :return: initial payload and list of steps
+    """
     raw_steps = [step for step in json.loads(raw_payload)]
 
     encoded_initial_payload, *encoded_steps = raw_steps
@@ -77,6 +96,18 @@ def parse_payload(raw_payload: str) -> Tuple[str, List[DefaultStep]]:
 
 
 def validate_request(request: Request) -> ValidateRequestResponse:
+    """
+    Validates the incoming request checking the workflow protocol
+    version and whether it is the first invocation.
+
+    Raises `WorkflowError` if:
+    - it's not the first invocation and expected protocol version doesn't match
+      the request.
+    - it's not the first invocation but there is no workflow id in the headers.
+
+    :param request: Request received
+    :return: whether it's the first invocation and the workflow id
+    """
     # Get version header
     version_header = (
         request.headers.get(WORKFLOW_PROTOCOL_VERSION_HEADER)
@@ -112,6 +143,15 @@ def validate_request(request: Request) -> ValidateRequestResponse:
 def parse_request(
     request_payload: Optional[str], is_first_invocation: bool
 ) -> ParseRequestResponse:
+    """
+    Checks request headers and body
+    - Reads the request body as raw text
+    - Returns the steps. If it's the first invocation, steps are empty.
+      Otherwise, steps are generated from the request body.
+
+    :param request: Request received
+    :return: raw initial payload and the steps
+    """
     if is_first_invocation:
         return ParseRequestResponse(
             raw_initial_payload=(request_payload or ""),

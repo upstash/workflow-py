@@ -4,11 +4,11 @@ import time
 from upstash_workflow.fastapi import Serve
 from upstash_workflow import AsyncWorkflowContext, CallResponse
 
-app = FastAPI()
+app = FastAPI(docs_url="/api/py/docs", openapi_url="/api/py/openapi.json")
 serve = Serve(app)
 
 
-@app.get("/")
+@app.get("/api/py/")
 async def root() -> Dict[str, str]:
     return {"message": "Hello World"}
 
@@ -17,7 +17,7 @@ def some_work(input: str) -> str:
     return f"processed '{input}'"
 
 
-@serve.post("/sleep")
+@serve.post("/api/py/sleep")
 async def sleep(context: AsyncWorkflowContext[str]) -> None:
     input = context.request_payload
 
@@ -46,12 +46,12 @@ async def sleep(context: AsyncWorkflowContext[str]) -> None:
     await context.run("step3", _step3)
 
 
-@app.post("/get-data")
+@app.post("/api/py/get-data")
 async def get_data() -> Dict[str, str]:
     return {"message": "get data response"}
 
 
-@serve.post("/call")
+@serve.post("/api/py/call")
 async def call(context: AsyncWorkflowContext[str]) -> None:
     input = context.request_payload
 
@@ -64,7 +64,7 @@ async def call(context: AsyncWorkflowContext[str]) -> None:
 
     response: CallResponse[Dict[str, str]] = await context.call(
         "get-data",
-        url=f"{context.env.get('UPSTASH_WORKFLOW_URL', 'http://localhost:8000')}/get-data",
+        url=f"{context.env.get('UPSTASH_WORKFLOW_URL', 'http://localhost:8000')}/api/py/get-data",
         method="POST",
         body={"message": result1},
     )
@@ -77,7 +77,7 @@ async def call(context: AsyncWorkflowContext[str]) -> None:
     await context.run("step2", _step2)
 
 
-@serve.post("/auth")
+@serve.post("/api/py/auth")
 async def auth(context: AsyncWorkflowContext[str]) -> None:
     if context.headers.get("authentication") != "Bearer secret_password":
         print("Authentication failed.")

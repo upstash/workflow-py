@@ -22,7 +22,7 @@ from upstash_workflow.workflow_types import Request
 from upstash_workflow.workflow_requests import get_headers, recreate_user_headers
 
 if TYPE_CHECKING:
-    from upstash_workflow.asyncio.context.context import WorkflowContext
+    from upstash_workflow import AsyncWorkflowContext
 
 _logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ TInitialPayload = TypeVar("TInitialPayload")
 
 
 async def trigger_first_invocation(
-    workflow_context: WorkflowContext[TInitialPayload],
+    workflow_context: AsyncWorkflowContext[TInitialPayload],
     retries: int,
 ) -> None:
     headers = get_headers(
@@ -65,7 +65,7 @@ async def trigger_route_function(
 
 
 async def trigger_workflow_delete(
-    workflow_context: WorkflowContext[TInitialPayload],
+    workflow_context: AsyncWorkflowContext[TInitialPayload],
     cancel: Optional[bool] = False,
 ) -> None:
     async with httpx.AsyncClient() as client:
@@ -84,6 +84,28 @@ async def handle_third_party_call_result(
     workflow_url: str,
     retries: int,
 ) -> Literal["call-will-retry", "is-call-return", "continue-workflow"]:
+    """
+    Check if the request is from a third party call result. If so,
+    call QStash to add the result to the ongoing workflow.
+
+    Otherwise, do nothing.
+
+    ### How third party calls work
+
+    In third party calls, we publish a message to the third party API.
+    the result is then returned back to the workflow endpoint.
+
+    Whenever the workflow endpoint receives a request, we first check
+    if the incoming request is a third party call result coming from QStash.
+    If so, we send back the result to QStash as a result step.
+
+    :param request: Incoming request
+    :param request_payload: Request payload
+    :param client: QStash client
+    :param workflow_url: Workflow URL
+    :param retries: Number of retries
+    :return: "call-will-retry", "is-call-return" or "continue-workflow"
+    """
     try:
         if request.headers and request.headers.get("Upstash-Workflow-Callback"):
             if request_payload:

@@ -4,12 +4,20 @@ from upstash_workflow.types import DefaultStep
 
 
 class WorkflowError(QStashError):
+    """
+    Error raised during Workflow execution
+    """
+
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.name = "WorkflowError"
 
 
 class WorkflowAbort(Exception):
+    """
+    Raised when the workflow executes a function successfully and aborts to end the execution
+    """
+
     def __init__(
         self,
         step_name: str,
@@ -32,6 +40,12 @@ class WorkflowAbort(Exception):
 
 
 def format_workflow_error(error: object) -> Dict[str, str]:
+    """
+    Formats an unknown error to match the FailureFunctionPayload format
+
+    :param error:
+    :return:
+    """
     if isinstance(error, Exception):
         return {"error": error.__class__.__name__, "message": str(error)}
     return {"error": "Error", "message": "An error occurred while executing workflow."}
