@@ -78,7 +78,7 @@ def _trigger_workflow_delete(
         client.delete(
             f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
             headers={
-                "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN', '')}"
+                "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN')}"
             },
         )
 

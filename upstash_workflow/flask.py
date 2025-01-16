@@ -1,4 +1,5 @@
 from inspect import iscoroutinefunction
+import os
 from flask import Flask, request
 from werkzeug.wrappers import Response
 from typing import Callable, cast, TypeVar, Optional, Dict
@@ -48,6 +49,15 @@ class Serve:
         :param url: Url of the endpoint where the workflow is set up. If not set, url will be inferred from the request.
         :return:
         """
+
+        if not (
+            qstash_client
+            or (env is not None and env.get("QSTASH_TOKEN"))
+            or (env is None and os.getenv("QSTASH_TOKEN"))
+        ):
+            raise ValueError(
+                "QSTASH_TOKEN is missing. Make sure to set it in the environment variables or pass qstash_client or env as an argument."
+            )
 
         def decorator(
             route_function: RouteFunction[TInitialPayload],
