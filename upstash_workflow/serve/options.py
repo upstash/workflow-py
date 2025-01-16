@@ -86,7 +86,7 @@ def _process_options(
     return ServeBaseOptions[TInitialPayload, TResponse](
         qstash_client=qstash_client
         or QStash(
-            cast(str, environment.get("QSTASH_TOKEN", "")),
+            cast(str, environment.get("QSTASH_TOKEN")),
         ),
         on_step_finish=on_step_finish or _on_step_finish,
         initial_payload_parser=initial_payload_parser or _initial_payload_parser,
