@@ -76,7 +76,6 @@ def _trigger_workflow_delete(
     workflow_context.qstash_client.http.request(
         path=f"/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
         method="DELETE",
-        headers={"Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN')}"},
         parse_response=False,
     )
 
