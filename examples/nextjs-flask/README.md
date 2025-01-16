@@ -39,17 +39,46 @@ You can observe the logs at [Upstash console under the Worfklow tab](https://con
 > bash bootstrap.sh nextjs-flask
 > ```
 
-Upstash Workflow needs a public URL to orchestrate the workflow. Check out our [Local Development](https://upstash.com/docs/workflow/howto/local-development) guide to learn how to set up a local tunnel.
-
-Create the tunnel and set the `UPSTASH_WORKFLOW_URL` environment variable in the `.env` file with the public URL:
+1. Create a virtual environment
 
 ```sh
-ngrok http localhost:8000
+python -m venv venv
+source venv/bin/activate
 ```
 
-Finally, run the app:
+2. Install the dependencies
 
-```sh
+```bash
+npm install
+```
+
+3. Get the credentials from the [Upstash Console](https://console.upstash.com/qstash) and add them to the `.env` file.
+
+```bash
+export QSTASH_TOKEN=
+```
+
+4. Open a local tunnel to port of the development server. Check out our [Local Development](https://upstash.com/docs/workflow/howto/local-development) guide to learn how to set up a local tunnel.
+
+```bash
+ngrok http 8000
+```
+
+Also, set the `UPSTASH_WORKLFOW_URL` environment variable to the public url provided by ngrok.
+
+```bash
+export UPSTASH_WORKFLOW_URL=
+```
+
+5. Set the environment variables
+
+```bash
+source .env
+```
+
+6. Run the development server
+
+```bash
 npm run dev
 ```
 
