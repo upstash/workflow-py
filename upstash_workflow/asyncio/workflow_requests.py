@@ -1,5 +1,4 @@
 from __future__ import annotations
-import httpx
 import json
 import base64
 import logging
@@ -68,13 +67,12 @@ async def _trigger_workflow_delete(
     workflow_context: AsyncWorkflowContext[TInitialPayload],
     cancel: Optional[bool] = False,
 ) -> None:
-    async with httpx.AsyncClient() as client:
-        await client.delete(
-            f"https://qstash.upstash.io/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
-            headers={
-                "Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN')}"
-            },
-        )
+    await workflow_context.qstash_client.http.request(
+        path=f"/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
+        method="DELETE",
+        headers={"Authorization": f"Bearer {workflow_context.env.get('QSTASH_TOKEN')}"},
+        parse_response=False,
+    )
 
 
 async def _handle_third_party_call_result(

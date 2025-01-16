@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "upstash-workflow"
-version = "0.0.1-rc.1"
+version = "0.0.1-rc.2"
 description = "Python SDK for Upstash Workflow"
 license = "MIT"
 authors = ["Upstash <support@upstash.com>"]
@@ -29,8 +29,7 @@ packages = [{ include = "upstash_workflow" }]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-httpx = ">=0.23.0, <1"
-qstash = "^2.0.2"
+qstash = "^2.0.3"
 
 [tool.poetry.group.fastapi.dependencies]
 fastapi = "^0.115.0"
