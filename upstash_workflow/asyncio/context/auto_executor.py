@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Union, Literal, cast, Any, TypeVar
 import json
+from threading import Lock
 from qstash.message import BatchJsonRequest
 from upstash_workflow.constants import NO_CONCURRENCY
 from upstash_workflow.error import WorkflowError, WorkflowAbort
@@ -28,6 +29,8 @@ class _AutoExecutor:
         self.step_count: int = 0
         self.plan_step_count: int = 0
         self.executing_step: Union[str, Literal[False]] = False
+        self._already_executed: bool = False
+        self._lock = Lock()
 
     async def add_step(self, step_info: _BaseLazyStep[TResult]) -> TResult:
         self.step_count += 1
@@ -47,6 +50,13 @@ class _AutoExecutor:
             step = self.steps[self.step_count + self.plan_step_count]
             _validate_step(lazy_step, step)
             return step.out
+
+        with self._lock:
+            if self._already_executed:
+                raise WorkflowError(
+                    "Running parallel steps is not yet available in workflow-py. Ensure that you are awaiting the steps sequentially."
+                )
+            self._already_executed = True
 
         result_step = await lazy_step.get_result_step(NO_CONCURRENCY, self.step_count)
         await self.submit_steps_to_qstash([result_step], [lazy_step])
