@@ -299,7 +299,7 @@ def _get_headers(
                 )
 
     content_type = user_headers.get("Content-Type") if user_headers else None
-    content_type = content_type or DEFAULT_CONTENT_TYPE
+    content_type = DEFAULT_CONTENT_TYPE if content_type is None else content_type
 
     if step and step.call_headers is not None:
         forwarded_headers = {
