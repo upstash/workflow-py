@@ -57,7 +57,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         self.headers: Dict[str, str] = headers
         self.request_payload: TInitialPayload = initial_payload
         self.env: Dict[str, Optional[str]] = env or {}
-        self.retries: int = retries or DEFAULT_RETRIES
+        self.retries: int = DEFAULT_RETRIES if retries is None else retries
         self._executor: _AutoExecutor = _AutoExecutor(self, self._steps)
 
     def run(

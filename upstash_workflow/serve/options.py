@@ -106,7 +106,7 @@ def _process_options(
         ),
         base_url=base_url or environment.get("UPSTASH_WORKFLOW_URL"),
         env=environment,
-        retries=retries or DEFAULT_RETRIES,
+        retries=DEFAULT_RETRIES if retries is None else retries,
         url=url,
     )
 
