@@ -31,6 +31,7 @@ async def test_workflow_headers(qstash_client: AsyncQStash) -> None:
         initial_payload="my-payload",
         env=None,
         retries=None,
+        failure_url=None
     )
 
     async def execute() -> None:

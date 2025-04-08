@@ -2,19 +2,54 @@ import os
 import json
 import re
 import logging
-from typing import Callable, Dict, Optional, cast, TypeVar, Match, Union
+from typing import (
+    Callable,
+    Dict,
+    Optional,
+    cast,
+    TypeVar,
+    Match,
+    Union,
+    Any,
+    Generic,
+    Tuple,
+)
 from qstash import QStash, Receiver
 from upstash_workflow.workflow_types import _Response, _SyncRequest, _AsyncRequest
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
     _FinishCondition,
-    ServeBaseOptions,
 )
+from upstash_workflow import WorkflowContext
+from upstash_workflow import AsyncWorkflowContext
+from dataclasses import dataclass
 
 _logger = logging.getLogger(__name__)
 
 TResponse = TypeVar("TResponse")
 TInitialPayload = TypeVar("TInitialPayload")
+
+
+@dataclass
+class ServeOptions(Generic[TInitialPayload, TResponse]):
+    qstash_client: QStash
+    initial_payload_parser: Callable[[str], TInitialPayload]
+    receiver: Optional[Receiver]
+    base_url: Optional[str]
+    env: Dict[str, Optional[str]]
+    retries: int
+    url: Optional[str]
+    failure_function: Optional[
+        Callable[[WorkflowContext[TInitialPayload], int, str, Dict[str, str]], Any]
+    ]
+    failure_url: Optional[str]
+
+
+@dataclass
+class ServeBaseOptions(
+    Generic[TInitialPayload, TResponse], ServeOptions[TInitialPayload, TResponse]
+):
+    on_step_finish: Callable[[str, _FinishCondition], TResponse]
 
 
 def _process_options(
@@ -27,6 +62,10 @@ def _process_options(
     env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
+    failure_function: Optional[
+        Callable[[WorkflowContext, int, str, Dict[str, str]], Any]
+    ] = None,
+    failure_url: Optional[str] = None,
 ) -> ServeBaseOptions[TInitialPayload, TResponse]:
     """
     Fills the options with default values if they are not provided.
@@ -108,6 +147,8 @@ def _process_options(
         env=environment,
         retries=DEFAULT_RETRIES if retries is None else retries,
         url=url,
+        failure_url=failure_url,
+        failure_function=failure_function,
     )
 
 
@@ -115,7 +156,14 @@ def _determine_urls(
     request: Union[_SyncRequest, _AsyncRequest],
     url: Optional[str],
     base_url: Optional[str],
-) -> str:
+    failure_function: Optional[
+        Callable[
+            [Union[WorkflowContext[TInitialPayload], AsyncWorkflowContext[TInitialPayload]], int, str, Dict[str, str]],
+            Any,
+        ]
+    ],
+    failure_url: Optional[str],
+) -> Tuple[str, str | None]:
     initial_workflow_url = str(url if url is not None else request.url)
 
     if base_url:
@@ -130,7 +178,8 @@ def _determine_urls(
     else:
         workflow_url = initial_workflow_url
 
-    return workflow_url
+    workflow_failure_url = workflow_url if failure_function else failure_url
+    return cast(Tuple[str, str | None], [workflow_url, workflow_failure_url])
 
 
 AUTH_FAIL_MESSAGE = "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run"

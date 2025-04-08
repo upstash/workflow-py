@@ -46,6 +46,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         headers: Dict[str, str],
         steps: List[DefaultStep],
         url: str,
+        failure_url: Optional[str],
         initial_payload: TInitialPayload,
         env: Optional[Dict[str, Optional[str]]] = None,
         retries: Optional[int] = None,
@@ -54,6 +55,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         self.workflow_run_id: str = workflow_run_id
         self._steps: List[DefaultStep] = steps
         self.url: str = url
+        self.failure_url = failure_url
         self.headers: Dict[str, str] = headers
         self.request_payload: TInitialPayload = initial_payload
         self.env: Dict[str, Optional[str]] = env or {}

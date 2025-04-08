@@ -1,5 +1,4 @@
 from typing import (
-    Callable,
     Literal,
     Optional,
     Dict,
@@ -10,9 +9,7 @@ from typing import (
     Any,
     TypedDict,
 )
-from qstash import QStash, Receiver
 from dataclasses import dataclass
-
 
 _FinishCondition = Literal[
     "success",
@@ -24,24 +21,6 @@ _FinishCondition = Literal[
 
 TInitialPayload = TypeVar("TInitialPayload")
 TResponse = TypeVar("TResponse")
-
-
-@dataclass
-class ServeOptions(Generic[TInitialPayload, TResponse]):
-    qstash_client: QStash
-    initial_payload_parser: Callable[[str], TInitialPayload]
-    receiver: Optional[Receiver]
-    base_url: Optional[str]
-    env: Dict[str, Optional[str]]
-    retries: int
-    url: Optional[str]
-
-
-@dataclass
-class ServeBaseOptions(
-    Generic[TInitialPayload, TResponse], ServeOptions[TInitialPayload, TResponse]
-):
-    on_step_finish: Callable[[str, _FinishCondition], TResponse]
 
 
 StepTypes = [

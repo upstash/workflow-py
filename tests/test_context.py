@@ -30,6 +30,7 @@ def test_workflow_headers(qstash_client: QStash) -> None:
         initial_payload="my-payload",
         env=None,
         retries=None,
+        failure_url=WORKFLOW_ENDPOINT
     )
 
     def execute() -> None:
