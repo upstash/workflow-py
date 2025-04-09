@@ -70,7 +70,11 @@ def _serve_base(
 
     async def _handler(request: TRequest) -> TResponse:
         workflow_url, workflow_failure_url = _determine_urls(
-            cast(_AsyncRequest, request), url, base_url, failure_function, failure_url
+            cast(_AsyncRequest, request),
+            url,
+            base_url,
+            False if failure_function is None else True,
+            failure_url,
         )
 
         request_payload = await _get_payload(request) or ""

@@ -84,7 +84,8 @@ async def _handle_failure(
 
         # Attempt running route_function until the first step
         auth_check = await _DisabledWorkflowContext[Any].try_authentication(
-            route_function, cast(AsyncWorkflowContext[TInitialPayload], workflow_context)
+            route_function,
+            cast(AsyncWorkflowContext[TInitialPayload], workflow_context),
         )
 
         if auth_check == "run-ended":

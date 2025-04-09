@@ -21,7 +21,6 @@ from upstash_workflow.types import (
     _FinishCondition,
 )
 from upstash_workflow import WorkflowContext
-from upstash_workflow import AsyncWorkflowContext
 from dataclasses import dataclass
 
 _logger = logging.getLogger(__name__)
@@ -156,12 +155,7 @@ def _determine_urls(
     request: Union[_SyncRequest, _AsyncRequest],
     url: Optional[str],
     base_url: Optional[str],
-    failure_function: Optional[
-        Callable[
-            [Union[WorkflowContext[TInitialPayload], AsyncWorkflowContext[TInitialPayload]], int, str, Dict[str, str]],
-            Any,
-        ]
-    ],
+    failure_function_exists: bool,
     failure_url: Optional[str],
 ) -> Tuple[str, str | None]:
     initial_workflow_url = str(url if url is not None else request.url)
@@ -178,7 +172,7 @@ def _determine_urls(
     else:
         workflow_url = initial_workflow_url
 
-    workflow_failure_url = workflow_url if failure_function else failure_url
+    workflow_failure_url = workflow_url if failure_function_exists else failure_url
     return cast(Tuple[str, str | None], [workflow_url, workflow_failure_url])
 
 

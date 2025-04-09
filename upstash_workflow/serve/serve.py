@@ -80,7 +80,11 @@ def _serve_base(
         :return: A response.
         """
         workflow_url, workflow_failure_url = _determine_urls(
-            cast(_SyncRequest, request), url, base_url, failure_function, failure_url
+            cast(_SyncRequest, request),
+            url,
+            base_url,
+            False if failure_function is None else True,
+            failure_url,
         )
 
         request_payload = _get_payload(request) or ""

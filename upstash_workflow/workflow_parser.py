@@ -1,5 +1,16 @@
 import json
-from typing import Optional, List, Tuple, Union, Callable, Dict, Any, Literal, TypeVar, cast
+from typing import (
+    Optional,
+    List,
+    Tuple,
+    Union,
+    Callable,
+    Dict,
+    Any,
+    Literal,
+    TypeVar,
+    cast,
+)
 from upstash_workflow.utils import _nanoid, _decode_base64
 from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
