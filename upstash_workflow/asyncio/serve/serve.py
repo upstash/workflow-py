@@ -5,6 +5,7 @@ from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import _Response, _AsyncRequest
 from upstash_workflow.asyncio.workflow_parser import (
     _get_payload,
+    _handle_failure,
 )
 from upstash_workflow.workflow_parser import _validate_request, _parse_request
 from upstash_workflow.asyncio.workflow_requests import (
@@ -39,6 +40,10 @@ def _serve_base(
     env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = None,
     url: Optional[str] = None,
+    failure_function: Optional[
+        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
+    ] = None,
+    failure_url: Optional[str] = None,
 ) -> Dict[str, Callable[[TRequest], Awaitable[TResponse]]]:
     processed_options = _process_options(
         qstash_client=qstash_client,
@@ -49,6 +54,8 @@ def _serve_base(
         env=env,
         retries=retries,
         url=url,
+        failure_function=failure_function,
+        failure_url=failure_url,
     )
     qstash_client = processed_options.qstash_client
     on_step_finish = processed_options.on_step_finish
@@ -58,9 +65,17 @@ def _serve_base(
     env = processed_options.env
     retries = processed_options.retries
     url = processed_options.url
+    failure_url = processed_options.failure_url
+    failure_function = processed_options.failure_function
 
     async def _handler(request: TRequest) -> TResponse:
-        workflow_url = _determine_urls(cast(_AsyncRequest, request), url, base_url)
+        workflow_url, workflow_failure_url = _determine_urls(
+            cast(_AsyncRequest, request),
+            url,
+            base_url,
+            False if failure_function is None else True,
+            failure_url,
+        )
 
         request_payload = await _get_payload(request) or ""
         _verify_request(
@@ -78,6 +93,20 @@ def _serve_base(
         raw_initial_payload = parse_request_response.raw_initial_payload
         steps = parse_request_response.steps
 
+        failure_check = await _handle_failure(
+            request,
+            request_payload,
+            qstash_client,
+            initial_payload_parser,
+            route_function,
+            failure_function,
+            env,
+            retries,
+        )
+
+        if failure_check == "is-failure-callback":
+            return on_step_finish(workflow_run_id, "failure-callback")
+
         workflow_context = AsyncWorkflowContext(
             qstash_client=qstash_client,
             workflow_run_id=workflow_run_id,
@@ -89,6 +118,7 @@ def _serve_base(
             url=workflow_url,
             env=env,
             retries=retries,
+            failure_url=workflow_failure_url,
         )
 
         auth_check = await _DisabledWorkflowContext[Any].try_authentication(
@@ -110,6 +140,7 @@ def _serve_base(
             raw_initial_payload,
             qstash_client,
             workflow_url,
+            workflow_failure_url,
             retries,
         )
 
@@ -153,6 +184,10 @@ def serve(
     env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = None,
     url: Optional[str] = None,
+    failure_function: Optional[
+        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
+    ] = None,
+    failure_url: Optional[str] = None,
 ) -> Dict[str, Callable[[TRequest], Awaitable[TResponse]]]:
     """
     Creates a method that handles incoming requests and runs the provided
@@ -178,4 +213,6 @@ def serve(
         env=env,
         retries=retries,
         url=url,
+        failure_function=failure_function,
+        failure_url=failure_url,
     )

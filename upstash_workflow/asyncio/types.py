@@ -4,10 +4,12 @@ from typing import (
     Dict,
     Generic,
     TypeVar,
+    Any,
 )
 from qstash import AsyncQStash, Receiver
 from dataclasses import dataclass
 from upstash_workflow.types import _FinishCondition
+from upstash_workflow import AsyncWorkflowContext
 
 TInitialPayload = TypeVar("TInitialPayload")
 TResponse = TypeVar("TResponse")
@@ -22,6 +24,10 @@ class ServeOptions(Generic[TInitialPayload, TResponse]):
     env: Dict[str, Optional[str]]
     retries: int
     url: Optional[str]
+    failure_function: Optional[
+        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Any]
+    ]
+    failure_url: Optional[str]
 
 
 @dataclass
