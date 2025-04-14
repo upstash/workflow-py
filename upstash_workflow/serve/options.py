@@ -173,7 +173,7 @@ def _determine_urls(
         workflow_url = initial_workflow_url
 
     workflow_failure_url = workflow_url if failure_function_exists else failure_url
-    return cast(Tuple[str, Optional[str]], (workflow_url, workflow_failure_url))
+    return (workflow_url, workflow_failure_url)
 
 
 AUTH_FAIL_MESSAGE = "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run"
