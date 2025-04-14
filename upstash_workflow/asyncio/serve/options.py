@@ -1,20 +1,42 @@
 import os
 import json
 import logging
-from typing import Callable, Dict, Optional, cast, TypeVar, Any
+from typing import Callable, Dict, Optional, cast, TypeVar, Any, Generic
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import _Response
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
     _FinishCondition,
 )
-from upstash_workflow.asyncio.types import ServeBaseOptions
 from upstash_workflow import AsyncWorkflowContext
 
-_logger = logging.getLogger(__name__)
+from dataclasses import dataclass
 
-TResponse = TypeVar("TResponse")
+_logger = logging.getLogger(__name__)
 TInitialPayload = TypeVar("TInitialPayload")
+TResponse = TypeVar("TResponse")
+
+
+@dataclass
+class ServeOptions(Generic[TInitialPayload, TResponse]):
+    qstash_client: AsyncQStash
+    initial_payload_parser: Callable[[str], TInitialPayload]
+    receiver: Optional[Receiver]
+    base_url: Optional[str]
+    env: Dict[str, Optional[str]]
+    retries: int
+    url: Optional[str]
+    failure_function: Optional[
+        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Any]
+    ]
+    failure_url: Optional[str]
+
+
+@dataclass
+class ServeBaseOptions(
+    Generic[TInitialPayload, TResponse], ServeOptions[TInitialPayload, TResponse]
+):
+    on_step_finish: Callable[[str, _FinishCondition], TResponse]
 
 
 def _process_options(
