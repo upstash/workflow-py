@@ -23,6 +23,7 @@ from upstash_workflow.constants import (
     WORKFLOW_FEATURE_HEADER,
     WORKFLOW_FAILURE_HEADER,
     DEFAULT_CONTENT_TYPE,
+    DEFAULT_RETRIES,
 )
 from upstash_workflow.types import StepTypes, DefaultStep, _HeadersResponse
 from upstash_workflow.workflow_types import _SyncRequest
@@ -241,6 +242,10 @@ def _handle_third_party_call_result(
         )
 
 
+def _should_set_retries(retries: Optional[int]):
+    return retries is not None and retries != DEFAULT_RETRIES
+
+
 def _get_headers(
     init_header_value: Literal["true", "false"],
     workflow_run_id: str,
@@ -306,7 +311,7 @@ def _get_headers(
                 "failureCall"
             )
 
-        if retries is not None:
+        if _should_set_retries(retries):
             base_headers["Upstash-Failure-Callback-Retries"] = str(retries)
             if step and step.call_url:
                 base_headers["Upstash-Callback-Failure-Callback-Retries"] = str(retries)
@@ -325,7 +330,7 @@ def _get_headers(
         if retries is not None:
             base_headers["Upstash-Callback-Retries"] = str(retries)
             base_headers["Upstash-Failure-Callback-Retries"] = str(retries)
-    elif retries is not None:
+    elif _should_set_retries(retries):
         base_headers["Upstash-Retries"] = str(retries)
         base_headers["Upstash-Failure-Callback-Retries"] = str(retries)
 

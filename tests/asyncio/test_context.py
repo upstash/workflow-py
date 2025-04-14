@@ -30,7 +30,7 @@ async def test_workflow_headers(qstash_client: AsyncQStash) -> None:
         url=WORKFLOW_ENDPOINT,
         initial_payload="my-payload",
         env=None,
-        retries=None,
+        retries=1,
         failure_url=WORKFLOW_ENDPOINT,
     )
 
@@ -78,10 +78,10 @@ async def test_workflow_headers(qstash_client: AsyncQStash) -> None:
                         "Upstash-Callback-Failure-Callback-Workflow-Init": "false",
                         "Upstash-Callback-Failure-Callback-Workflow-Url": "https://www.my-website.com/api",
                         "Upstash-Callback-Failure-Callback-Workflow-Calltype": "failureCall",
-                        "Upstash-Failure-Callback-Retries": "3",
-                        "Upstash-Callback-Failure-Callback-Retries": "3",
+                        "Upstash-Failure-Callback-Retries": "1",
+                        "Upstash-Callback-Failure-Callback-Retries": "1",
                         "Upstash-Retries": "10",
-                        "Upstash-Callback-Retries": "3",
+                        "Upstash-Callback-Retries": "1",
                         "Upstash-Forward-my-header": "my-value",
                         "Upstash-Callback": "https://www.my-website.com/api",
                         "Upstash-Callback-Workflow-RunId": "wfr-id",
