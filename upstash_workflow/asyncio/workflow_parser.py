@@ -39,7 +39,7 @@ async def _handle_failure(
     failure_function: Optional[
         Callable[
             [AsyncWorkflowContext[TInitialPayload], int, str, Dict[str, str]],
-            Awaitable[None],
+            Awaitable[Any],
         ]
     ],
     env: Dict[str, Any],

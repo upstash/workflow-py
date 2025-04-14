@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from typing import Callable, Dict, Optional, cast, TypeVar, Any, Generic
+from typing import Callable, Dict, Optional, cast, TypeVar, Any, Generic, Awaitable
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import _Response
 from upstash_workflow.constants import DEFAULT_RETRIES
@@ -27,7 +27,7 @@ class ServeOptions(Generic[TInitialPayload, TResponse]):
     retries: int
     url: Optional[str]
     failure_function: Optional[
-        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Any]
+        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
     ]
     failure_url: Optional[str]
 
@@ -50,7 +50,7 @@ def _process_options(
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
     failure_function: Optional[
-        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Any]
+        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
     ] = None,
     failure_url: Optional[str] = None,
 ) -> ServeBaseOptions[TInitialPayload, TResponse]:

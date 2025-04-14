@@ -197,7 +197,7 @@ def _handle_failure(
     initial_payload_parser: Callable[[str], Any],
     route_function: Callable[[WorkflowContext[TInitialPayload]], None],
     failure_function: Optional[
-        Callable[[WorkflowContext[TInitialPayload], int, str, Dict[str, str]], None]
+        Callable[[WorkflowContext[TInitialPayload], int, str, Dict[str, str]], Any]
     ],
     env: Dict[str, Any],
     retries: int,
