@@ -79,6 +79,7 @@ async def _handle_third_party_call_result(
     request_payload: str,
     client: AsyncQStash,
     workflow_url: str,
+    workflow_failure_url: Optional[str],
     retries: int,
 ) -> Literal["call-will-retry", "is-call-return", "continue-workflow"]:
     """
@@ -173,6 +174,7 @@ async def _handle_third_party_call_result(
                 user_headers,
                 None,
                 retries,
+                workflow_failure_url=workflow_failure_url,
             ).headers
 
             call_response = {

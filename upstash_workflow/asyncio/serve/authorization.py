@@ -38,6 +38,7 @@ class _DisabledWorkflowContext(
             initial_payload=context.request_payload,
             env=context.env,
             retries=context.retries,
+            failure_url=context.failure_url,
         )
 
         try:

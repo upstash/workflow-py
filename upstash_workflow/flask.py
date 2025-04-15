@@ -2,7 +2,7 @@ from inspect import iscoroutinefunction
 import os
 from flask import Flask, request
 from werkzeug.wrappers import Response
-from typing import Callable, cast, TypeVar, Optional, Dict
+from typing import Callable, cast, TypeVar, Optional, Dict, Any
 from qstash import QStash, Receiver
 from upstash_workflow import serve, WorkflowContext
 from upstash_workflow.workflow_types import (
@@ -32,6 +32,10 @@ class Serve:
         env: Optional[Dict[str, Optional[str]]] = None,
         retries: Optional[int] = None,
         url: Optional[str] = None,
+        failure_function: Optional[
+            Callable[[WorkflowContext, int, str, Dict[str, str]], Any]
+        ] = None,
+        failure_url: Optional[str] = None,
     ) -> Callable[
         [RouteFunction[TInitialPayload]],
         RouteFunction[TInitialPayload],
@@ -83,6 +87,8 @@ class Serve:
                         env=env,
                         retries=retries,
                         url=url,
+                        failure_function=failure_function,
+                        failure_url=failure_url,
                     ).get("handler"),
                 )
 

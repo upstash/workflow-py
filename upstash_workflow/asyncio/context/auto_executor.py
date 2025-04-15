@@ -84,6 +84,7 @@ class _AutoExecutor:
                 self.context.retries,
                 lazy_step.retries if isinstance(lazy_step, _LazyCallStep) else None,
                 lazy_step.timeout if isinstance(lazy_step, _LazyCallStep) else None,
+                self.context.failure_url,
             ).headers
 
             will_wait = (

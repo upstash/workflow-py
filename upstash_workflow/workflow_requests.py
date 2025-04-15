@@ -20,8 +20,10 @@ from upstash_workflow.constants import (
     WORKFLOW_URL_HEADER,
     WORKFLOW_PROTOCOL_VERSION,
     WORKFLOW_PROTOCOL_VERSION_HEADER,
-    DEFAULT_CONTENT_TYPE,
     WORKFLOW_FEATURE_HEADER,
+    WORKFLOW_FAILURE_HEADER,
+    DEFAULT_CONTENT_TYPE,
+    DEFAULT_RETRIES,
 )
 from upstash_workflow.types import StepTypes, DefaultStep, _HeadersResponse
 from upstash_workflow.workflow_types import _SyncRequest
@@ -109,6 +111,7 @@ def _handle_third_party_call_result(
     request_payload: str,
     client: QStash,
     workflow_url: str,
+    workflow_failure_url: Optional[str],
     retries: int,
 ) -> Literal["call-will-retry", "is-call-return", "continue-workflow"]:
     """
@@ -203,6 +206,7 @@ def _handle_third_party_call_result(
                 user_headers,
                 None,
                 retries,
+                workflow_failure_url=workflow_failure_url,
             ).headers
 
             call_response = {
@@ -238,6 +242,10 @@ def _handle_third_party_call_result(
         )
 
 
+def _should_set_retries(retries: Optional[int]):
+    return retries is not None and retries != DEFAULT_RETRIES
+
+
 def _get_headers(
     init_header_value: Literal["true", "false"],
     workflow_run_id: str,
@@ -247,6 +255,7 @@ def _get_headers(
     retries: Optional[int] = None,
     call_retries: Optional[int] = None,
     call_timeout: Optional[Union[int, str]] = None,
+    workflow_failure_url: Optional[str] = None,
 ) -> _HeadersResponse:
     """
     Gets headers for calling QStash
@@ -273,6 +282,45 @@ def _get_headers(
     if call_timeout:
         base_headers["Upstash-Timeout"] = str(call_timeout)
 
+    if workflow_failure_url:
+        base_headers[f"Upstash-Failure-Callback-Forward-{WORKFLOW_FAILURE_HEADER}"] = (
+            "true"
+        )
+        base_headers[
+            "Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback"
+        ] = "true"
+        base_headers["Upstash-Failure-Callback-Workflow-Runid"] = workflow_run_id
+        base_headers["Upstash-Failure-Callback-Workflow-Init"] = "false"
+        base_headers["Upstash-Failure-Callback-Workflow-Url"] = workflow_url
+        base_headers["Upstash-Failure-Callback-Workflow-Calltype"] = "failureCall"
+        if step and step.call_url:
+            base_headers[
+                f"Upstash-Callback-Failure-Callback-Forward-{WORKFLOW_FAILURE_HEADER}"
+            ] = "true"
+            base_headers[
+                "Upstash-Callback-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback"
+            ] = "true"
+            base_headers["Upstash-Callback-Failure-Callback-Workflow-Runid"] = (
+                workflow_run_id
+            )
+            base_headers["Upstash-Callback-Failure-Callback-Workflow-Init"] = "false"
+            base_headers["Upstash-Callback-Failure-Callback-Workflow-Url"] = (
+                workflow_url
+            )
+            base_headers["Upstash-Callback-Failure-Callback-Workflow-Calltype"] = (
+                "failureCall"
+            )
+
+        if _should_set_retries(retries):
+            base_headers["Upstash-Failure-Callback-Retries"] = str(retries)
+            if step and step.call_url:
+                base_headers["Upstash-Callback-Failure-Callback-Retries"] = str(retries)
+
+        if not step or not step.call_url:
+            base_headers["Upstash-Failure-Callback"] = workflow_failure_url
+            if step and step.call_url:
+                base_headers["Upstash-Callback-Failure-Callback"] = workflow_failure_url
+
     if step and step.call_url:
         base_headers["Upstash-Retries"] = str(
             call_retries if call_retries is not None else 0
@@ -282,7 +330,7 @@ def _get_headers(
         if retries is not None:
             base_headers["Upstash-Callback-Retries"] = str(retries)
             base_headers["Upstash-Failure-Callback-Retries"] = str(retries)
-    elif retries is not None:
+    elif _should_set_retries(retries):
         base_headers["Upstash-Retries"] = str(retries)
         base_headers["Upstash-Failure-Callback-Retries"] = str(retries)
 

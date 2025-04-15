@@ -1,19 +1,42 @@
 import os
 import json
 import logging
-from typing import Callable, Dict, Optional, cast, TypeVar
+from typing import Callable, Dict, Optional, cast, TypeVar, Any, Generic, Awaitable
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import _Response
 from upstash_workflow.constants import DEFAULT_RETRIES
 from upstash_workflow.types import (
     _FinishCondition,
 )
-from upstash_workflow.asyncio.types import ServeBaseOptions
+from upstash_workflow import AsyncWorkflowContext
+
+from dataclasses import dataclass
 
 _logger = logging.getLogger(__name__)
-
-TResponse = TypeVar("TResponse")
 TInitialPayload = TypeVar("TInitialPayload")
+TResponse = TypeVar("TResponse")
+
+
+@dataclass
+class ServeOptions(Generic[TInitialPayload, TResponse]):
+    qstash_client: AsyncQStash
+    initial_payload_parser: Callable[[str], TInitialPayload]
+    receiver: Optional[Receiver]
+    base_url: Optional[str]
+    env: Dict[str, Optional[str]]
+    retries: int
+    url: Optional[str]
+    failure_function: Optional[
+        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
+    ]
+    failure_url: Optional[str]
+
+
+@dataclass
+class ServeBaseOptions(
+    Generic[TInitialPayload, TResponse], ServeOptions[TInitialPayload, TResponse]
+):
+    on_step_finish: Callable[[str, _FinishCondition], TResponse]
 
 
 def _process_options(
@@ -26,6 +49,10 @@ def _process_options(
     env: Optional[Dict[str, Optional[str]]] = None,
     retries: Optional[int] = DEFAULT_RETRIES,
     url: Optional[str] = None,
+    failure_function: Optional[
+        Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
+    ] = None,
+    failure_url: Optional[str] = None,
 ) -> ServeBaseOptions[TInitialPayload, TResponse]:
     environment = env if env is not None else dict(os.environ)
 
@@ -94,6 +121,8 @@ def _process_options(
         env=environment,
         retries=DEFAULT_RETRIES if retries is None else retries,
         url=url,
+        failure_url=failure_url,
+        failure_function=failure_function,
     )
 
 

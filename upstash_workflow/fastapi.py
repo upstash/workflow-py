@@ -3,7 +3,7 @@ import json
 import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from typing import Callable, Awaitable, cast, TypeVar, Optional, Dict
+from typing import Callable, Awaitable, cast, TypeVar, Optional, Dict, Any
 from qstash import AsyncQStash, Receiver
 from upstash_workflow import async_serve, AsyncWorkflowContext
 from upstash_workflow.workflow_types import _Response as WorkflowResponse
@@ -29,6 +29,10 @@ class Serve:
         env: Optional[Dict[str, Optional[str]]] = None,
         retries: Optional[int] = None,
         url: Optional[str] = None,
+        failure_function: Optional[
+            Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
+        ] = None,
+        failure_url: Optional[str] = None,
     ) -> Callable[
         [AsyncRouteFunction[TInitialPayload]], AsyncRouteFunction[TInitialPayload]
     ]:
@@ -74,6 +78,8 @@ class Serve:
                         env=env,
                         retries=retries,
                         url=url,
+                        failure_function=failure_function,
+                        failure_url=failure_url,
                     ).get("handler"),
                 )
 
