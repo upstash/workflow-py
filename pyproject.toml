@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "upstash-workflow"
-version = "0.1.2"
+version = "0.1.3"
 description = "Python SDK for Upstash Workflow"
 license = "MIT"
 authors = ["Upstash <support@upstash.com>"]
