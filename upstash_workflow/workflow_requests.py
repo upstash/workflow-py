@@ -105,7 +105,7 @@ def _recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
                 header_lower == "cf-ew-via",
                 header_lower == "cf-ray",
                 # For Render https://render.com
-                header_lower == "render-proxy-ttl"
+                header_lower == "render-proxy-ttl",
             ]
         ):
             filtered_headers[header] = value
