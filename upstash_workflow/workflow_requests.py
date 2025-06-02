@@ -96,9 +96,16 @@ def _recreate_user_headers(headers: Dict[str, str]) -> Dict[str, str]:
         if not any(
             [
                 header_lower.startswith("upstash-workflow-"),
+                # https://vercel.com/docs/edge-network/headers/request-headers#x-vercel-id
                 header_lower.startswith("x-vercel-"),
                 header_lower.startswith("x-forwarded-"),
+                # https://blog.cloudflare.com/preventing-request-loops-using-cdn-loop/
                 header_lower == "cf-connecting-ip",
+                header_lower == "cdn-loop",
+                header_lower == "cf-ew-via",
+                header_lower == "cf-ray",
+                # For Render https://render.com
+                header_lower == "render-proxy-ttl"
             ]
         ):
             filtered_headers[header] = value
