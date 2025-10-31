@@ -278,7 +278,7 @@ def _get_headers(
         WORKFLOW_INIT_HEADER: init_header_value,
         WORKFLOW_ID_HEADER: workflow_run_id,
         WORKFLOW_URL_HEADER: workflow_url,
-        WORKFLOW_FEATURE_HEADER: "LazyFetch,InitialBody",
+        WORKFLOW_FEATURE_HEADER: "LazyFetch,InitialBody,WF_DetectTrigger",
     }
 
     if not (step and step.call_url):
