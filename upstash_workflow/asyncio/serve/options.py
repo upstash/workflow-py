@@ -4,7 +4,11 @@ import logging
 from typing import Callable, Dict, Optional, cast, TypeVar, Any, Generic, Awaitable
 from qstash import AsyncQStash, Receiver
 from upstash_workflow.workflow_types import _Response
-from upstash_workflow.constants import DEFAULT_RETRIES, WORKFLOW_PROTOCOL_VERSION_HEADER, WORKFLOW_PROTOCOL_VERSION
+from upstash_workflow.constants import (
+    DEFAULT_RETRIES,
+    WORKFLOW_PROTOCOL_VERSION_HEADER,
+    WORKFLOW_PROTOCOL_VERSION,
+)
 from upstash_workflow.types import (
     _FinishCondition,
 )
@@ -76,18 +80,17 @@ def _process_options(
                     status=400,
                     headers={
                         WORKFLOW_PROTOCOL_VERSION_HEADER: WORKFLOW_PROTOCOL_VERSION
-                    }
+                    },
                 ),
             )
 
         return cast(
-            TResponse, _Response(
+            TResponse,
+            _Response(
                 body={"workflowRunId": workflow_run_id},
                 status=200,
-                headers={
-                    WORKFLOW_PROTOCOL_VERSION_HEADER: WORKFLOW_PROTOCOL_VERSION
-                }
-            )
+                headers={WORKFLOW_PROTOCOL_VERSION_HEADER: WORKFLOW_PROTOCOL_VERSION},
+            ),
         )
 
     def _initial_payload_parser(initial_request: str) -> TInitialPayload:
