@@ -65,6 +65,8 @@ def test_workflow_headers(qstash_client: QStash) -> None:
                         "Upstash-Workflow-RunId": "wfr-id",
                         "Upstash-Workflow-Url": "https://www.my-website.com/api",
                         "Upstash-Feature-Set": "WF_NoDelete,InitialBody",
+                        "Upstash-Failure-Callback-Feature-Set": "LazyFetch,InitialBody",
+                        "Upstash-Callback-Failure-Callback-Feature-Set": "LazyFetch,InitialBody",
                         "Upstash-Failure-Callback-Forward-Upstash-Workflow-Is-Failure": "true",
                         "Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback": "true",
                         "Upstash-Failure-Callback-Workflow-Runid": "wfr-id",
