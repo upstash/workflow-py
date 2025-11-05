@@ -16,7 +16,11 @@ from typing import (
 )
 from qstash import QStash, Receiver
 from upstash_workflow.workflow_types import _Response, _SyncRequest, _AsyncRequest
-from upstash_workflow.constants import DEFAULT_RETRIES
+from upstash_workflow.constants import (
+    DEFAULT_RETRIES,
+    WORKFLOW_PROTOCOL_VERSION_HEADER,
+    WORKFLOW_PROTOCOL_VERSION,
+)
 from upstash_workflow.types import (
     _FinishCondition,
 )
@@ -99,11 +103,19 @@ def _process_options(
                         "workflowRunId": workflow_run_id,
                     },
                     status=400,
+                    headers={
+                        WORKFLOW_PROTOCOL_VERSION_HEADER: WORKFLOW_PROTOCOL_VERSION
+                    },
                 ),
             )
 
         return cast(
-            TResponse, _Response(body={"workflowRunId": workflow_run_id}, status=200)
+            TResponse,
+            _Response(
+                body={"workflowRunId": workflow_run_id},
+                status=200,
+                headers={WORKFLOW_PROTOCOL_VERSION_HEADER: WORKFLOW_PROTOCOL_VERSION},
+            ),
         )
 
     def _initial_payload_parser(initial_request: str) -> TInitialPayload:

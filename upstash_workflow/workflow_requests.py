@@ -278,7 +278,7 @@ def _get_headers(
         WORKFLOW_INIT_HEADER: init_header_value,
         WORKFLOW_ID_HEADER: workflow_run_id,
         WORKFLOW_URL_HEADER: workflow_url,
-        WORKFLOW_FEATURE_HEADER: "LazyFetch,InitialBody",
+        WORKFLOW_FEATURE_HEADER: "LazyFetch,InitialBody,WF_DetectTrigger",
     }
 
     if not (step and step.call_url):
@@ -300,6 +300,7 @@ def _get_headers(
         base_headers["Upstash-Failure-Callback-Workflow-Init"] = "false"
         base_headers["Upstash-Failure-Callback-Workflow-Url"] = workflow_url
         base_headers["Upstash-Failure-Callback-Workflow-Calltype"] = "failureCall"
+        base_headers["Upstash-Failure-Callback-Feature-Set"] = "LazyFetch,InitialBody"
         if step and step.call_url:
             base_headers[
                 f"Upstash-Callback-Failure-Callback-Forward-{WORKFLOW_FAILURE_HEADER}"
@@ -316,6 +317,9 @@ def _get_headers(
             )
             base_headers["Upstash-Callback-Failure-Callback-Workflow-Calltype"] = (
                 "failureCall"
+            )
+            base_headers["Upstash-Callback-Failure-Callback-Feature-Set"] = (
+                "LazyFetch,InitialBody"
             )
 
         if _should_set_retries(retries):
