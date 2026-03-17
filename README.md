@@ -110,6 +110,58 @@ uvicorn main:app --reload
 
 FastAPI server will be running at `localhost:8000`.
 
+## Workflow Client
+
+The Workflow Client provides methods for managing workflows from outside your workflow endpoints.
+
+### Usage
+
+```python
+from upstash_workflow import Client
+
+# Create a client
+client = Client(token="<QSTASH_TOKEN>")
+
+# Notify workflows waiting for an event
+await client.notify(
+    event_id="my-event-id",
+    event_data="my-data"  # data passed to the workflow run
+)
+
+# Cancel a workflow
+await client.cancel(workflow_run_id="<WORKFLOW_RUN_ID>")
+
+# Get waiters for an event
+waiters = await client.get_waiters(event_id="my-event-id")
+```
+
+### Notify with Lookback Support
+
+When you know the workflow run ID, you can use the `workflow_run_id` parameter in `notify` for lookback support. This ensures the notification will work even if called before the workflow reaches `waitForEvent`:
+
+```python
+await client.notify(
+    event_id="my-event-id",
+    event_data="my-data",
+    workflow_run_id="wfr_123"  # target specific workflow run with lookback
+)
+```
+
+### Async Client
+
+For async operations, use `AsyncClient`:
+
+```python
+from upstash_workflow.asyncio import AsyncClient
+
+client = AsyncClient(token="<QSTASH_TOKEN>")
+
+# All methods are async
+await client.notify(event_id="my-event-id", event_data="my-data")
+await client.cancel(workflow_run_id="<WORKFLOW_RUN_ID>")
+waiters = await client.get_waiters(event_id="my-event-id")
+```
+
 ## Contributing
 
 ### Development

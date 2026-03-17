@@ -100,3 +100,18 @@ class CallResponseDict(TypedDict):
     status: int
     body: Any
     header: Dict[str, List[str]]
+
+
+@dataclass
+class NotifyResponse:
+    message_id: str
+    url: str
+    workflow_run_id: str
+
+
+@dataclass
+class Waiter:
+    workflow_run_id: str
+    event_id: str
+    event_data: Optional[Any] = None
+    timeout: Optional[int] = None
