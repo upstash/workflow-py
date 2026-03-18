@@ -40,13 +40,13 @@ async def _trigger_first_invocation(
         workflow_context.headers,
         None,
         retries,
-        redact=redact,
     ).headers
 
     await workflow_context.qstash_client.message.publish_json(
         url=workflow_context.url,
         body=workflow_context.request_payload,
         headers=headers,
+        redact=redact,
     )
 
 

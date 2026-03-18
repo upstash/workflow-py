@@ -1,140 +1,82 @@
-"""Tests for redacted fields functionality."""
+"""Tests for redact parameter being passed to qstash client."""
 
-from upstash_workflow.workflow_requests import _get_headers
+from unittest.mock import MagicMock, patch
+from upstash_workflow.workflow_requests import _trigger_first_invocation
 from upstash_workflow.types import Redact
 
 
-def test_redact_body_only() -> None:
-    """Test redacting only the body."""
+def _make_workflow_context():
+    ctx = MagicMock()
+    ctx.workflow_run_id = "wfr-test-id"
+    ctx.url = "https://example.com"
+    ctx.headers = {}
+    ctx.request_payload = '{"test": true}'
+    ctx.qstash_client.message.publish_json = MagicMock()
+    return ctx
+
+
+def test_trigger_passes_redact_body() -> None:
+    """Test that redact with body is passed to publish_json."""
+    ctx = _make_workflow_context()
     redact: Redact = {"body": True}
 
-    result = _get_headers(
-        "true",
-        "wfr-test-id",
-        "https://example.com",
-        None,
-        None,
-        3,
-        redact=redact,
-    )
+    _trigger_first_invocation(ctx, retries=3, redact=redact)
 
-    assert result.headers["Upstash-Redact-Fields"] == "body"
+    ctx.qstash_client.message.publish_json.assert_called_once()
+    call_kwargs = ctx.qstash_client.message.publish_json.call_args
+    assert call_kwargs.kwargs["redact"] == {"body": True}
 
 
-def test_redact_header_all() -> None:
-    """Test redacting all headers."""
+def test_trigger_passes_redact_header_all() -> None:
+    """Test that redact with all headers is passed to publish_json."""
+    ctx = _make_workflow_context()
     redact: Redact = {"header": True}
 
-    result = _get_headers(
-        "true",
-        "wfr-test-id",
-        "https://example.com",
-        None,
-        None,
-        3,
-        redact=redact,
-    )
+    _trigger_first_invocation(ctx, retries=3, redact=redact)
 
-    assert result.headers["Upstash-Redact-Fields"] == "header"
+    call_kwargs = ctx.qstash_client.message.publish_json.call_args
+    assert call_kwargs.kwargs["redact"] == {"header": True}
 
 
-def test_redact_body_and_header_all() -> None:
-    """Test redacting body and all headers."""
-    redact: Redact = {"body": True, "header": True}
+def test_trigger_passes_redact_specific_headers() -> None:
+    """Test that redact with specific headers is passed to publish_json."""
+    ctx = _make_workflow_context()
+    redact: Redact = {"header": ["Authorization", "X-API-Key"]}
 
-    result = _get_headers(
-        "true",
-        "wfr-test-id",
-        "https://example.com",
-        None,
-        None,
-        3,
-        redact=redact,
-    )
+    _trigger_first_invocation(ctx, retries=3, redact=redact)
 
-    assert result.headers["Upstash-Redact-Fields"] == "body,header"
+    call_kwargs = ctx.qstash_client.message.publish_json.call_args
+    assert call_kwargs.kwargs["redact"] == {"header": ["Authorization", "X-API-Key"]}
 
 
-def test_redact_specific_headers() -> None:
-    """Test redacting specific headers."""
-    redact: Redact = {"header": ["Authorization"]}
-
-    result = _get_headers(
-        "true",
-        "wfr-test-id",
-        "https://example.com",
-        None,
-        None,
-        3,
-        redact=redact,
-    )
-
-    assert result.headers["Upstash-Redact-Fields"] == "header[Authorization]"
-
-
-def test_redact_body_and_specific_headers() -> None:
-    """Test redacting body and specific headers."""
-    redact: Redact = {"body": True, "header": ["Authorization", "X-API-Key"]}
-
-    result = _get_headers(
-        "true",
-        "wfr-test-id",
-        "https://example.com",
-        None,
-        None,
-        3,
-        redact=redact,
-    )
-
-    assert result.headers["Upstash-Redact-Fields"] == "body,header[Authorization],header[X-API-Key]"
-
-
-def test_redact_with_failure_url() -> None:
-    """Test redacting with failure URL sets both headers."""
+def test_trigger_passes_redact_body_and_headers() -> None:
+    """Test that redact with body and specific headers is passed to publish_json."""
+    ctx = _make_workflow_context()
     redact: Redact = {"body": True, "header": ["Authorization"]}
 
-    result = _get_headers(
-        "true",
-        "wfr-test-id",
-        "https://example.com",
-        None,
-        None,
-        3,
-        workflow_failure_url="https://failure.com",
-        redact=redact,
-    )
+    _trigger_first_invocation(ctx, retries=3, redact=redact)
 
-    assert result.headers["Upstash-Redact-Fields"] == "body,header[Authorization]"
-    assert result.headers["Upstash-Failure-Callback-Redact-Fields"] == "body,header[Authorization]"
+    call_kwargs = ctx.qstash_client.message.publish_json.call_args
+    assert call_kwargs.kwargs["redact"] == {"body": True, "header": ["Authorization"]}
 
 
-def test_no_redact() -> None:
-    """Test that no redact header is added when redact is None."""
-    result = _get_headers(
-        "true",
-        "wfr-test-id",
-        "https://example.com",
-        None,
-        None,
-        3,
-        redact=None,
-    )
+def test_trigger_passes_no_redact() -> None:
+    """Test that redact=None is passed when no redact specified."""
+    ctx = _make_workflow_context()
 
-    assert "Upstash-Redact-Fields" not in result.headers
+    _trigger_first_invocation(ctx, retries=3, redact=None)
+
+    call_kwargs = ctx.qstash_client.message.publish_json.call_args
+    assert call_kwargs.kwargs["redact"] is None
 
 
-def test_redact_empty_header_list() -> None:
-    """Test that empty header list doesn't add redact parts."""
-    redact: Redact = {"header": []}
+def test_trigger_no_redact_headers_in_headers() -> None:
+    """Test that Upstash-Redact-Fields is NOT in the headers (qstash client handles it)."""
+    ctx = _make_workflow_context()
+    redact: Redact = {"body": True, "header": ["Authorization"]}
 
-    result = _get_headers(
-        "true",
-        "wfr-test-id",
-        "https://example.com",
-        None,
-        None,
-        3,
-        redact=redact,
-    )
+    _trigger_first_invocation(ctx, retries=3, redact=redact)
 
-    assert "Upstash-Redact-Fields" not in result.headers
+    call_kwargs = ctx.qstash_client.message.publish_json.call_args
+    headers = call_kwargs.kwargs["headers"]
+    assert "Upstash-Redact-Fields" not in headers
