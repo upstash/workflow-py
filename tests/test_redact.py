@@ -1,6 +1,6 @@
 """Tests for redact parameter being passed to qstash client."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from upstash_workflow.workflow_requests import _trigger_first_invocation
 from upstash_workflow.types import Redact
 
