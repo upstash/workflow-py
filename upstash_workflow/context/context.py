@@ -26,6 +26,7 @@ from upstash_workflow.types import (
     HTTPMethods,
     CallResponse,
     CallResponseDict,
+    Redact,
 )
 
 TInitialPayload = TypeVar("TInitialPayload")
@@ -50,6 +51,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         initial_payload: TInitialPayload,
         env: Optional[Dict[str, Optional[str]]] = None,
         retries: Optional[int] = None,
+        redact: Optional[Redact] = None,
     ):
         self.qstash_client: QStash = qstash_client
         self.workflow_run_id: str = workflow_run_id
@@ -60,6 +62,7 @@ class WorkflowContext(Generic[TInitialPayload]):
         self.request_payload: TInitialPayload = initial_payload
         self.env: Dict[str, Optional[str]] = env or {}
         self.retries: int = DEFAULT_RETRIES if retries is None else retries
+        self.redact: Optional[Redact] = redact
         self._executor: _AutoExecutor = _AutoExecutor(self, self._steps)
 
     def run(

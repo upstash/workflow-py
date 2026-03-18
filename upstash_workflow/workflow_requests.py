@@ -25,7 +25,7 @@ from upstash_workflow.constants import (
     DEFAULT_CONTENT_TYPE,
     DEFAULT_RETRIES,
 )
-from upstash_workflow.types import StepTypes, DefaultStep, _HeadersResponse
+from upstash_workflow.types import StepTypes, DefaultStep, _HeadersResponse, Redact
 from upstash_workflow.workflow_types import _SyncRequest
 
 if TYPE_CHECKING:
@@ -39,6 +39,7 @@ TInitialPayload = TypeVar("TInitialPayload")
 def _trigger_first_invocation(
     workflow_context: WorkflowContext[TInitialPayload],
     retries: int,
+    redact: Optional[Redact] = None,
 ) -> None:
     headers = _get_headers(
         "true",
@@ -47,6 +48,7 @@ def _trigger_first_invocation(
         workflow_context.headers,
         None,
         retries,
+        redact=redact,
     ).headers
 
     workflow_context.qstash_client.message.publish_json(
@@ -263,6 +265,7 @@ def _get_headers(
     call_retries: Optional[int] = None,
     call_timeout: Optional[Union[int, str]] = None,
     workflow_failure_url: Optional[str] = None,
+    redact: Optional[Redact] = None,
 ) -> _HeadersResponse:
     """
     Gets headers for calling QStash
@@ -355,6 +358,24 @@ def _get_headers(
                     base_headers[f"Upstash-Forward-{header}"] = header_value
                 base_headers[f"Upstash-Failure-Callback-Forward-{header}"] = (
                     header_value
+                )
+
+    # Add redact headers if specified
+    if redact is not None:
+        redact_parts = []
+        if redact.get("body"):
+            redact_parts.append("body")
+        if redact.get("header") is not None:
+            if redact["header"] is True:
+                redact_parts.append("header")
+            elif isinstance(redact["header"], list) and len(redact["header"]) > 0:
+                for header_name in redact["header"]:
+                    redact_parts.append(f"header[{header_name}]")
+        if redact_parts:
+            base_headers["Upstash-Redact-Fields"] = ",".join(redact_parts)
+            if workflow_failure_url:
+                base_headers["Upstash-Failure-Callback-Redact-Fields"] = ",".join(
+                    redact_parts
                 )
 
     content_type = user_headers.get("Content-Type") if user_headers else None

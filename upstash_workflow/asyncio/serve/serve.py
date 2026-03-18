@@ -19,7 +19,7 @@ from upstash_workflow.serve.options import _determine_urls
 from upstash_workflow.asyncio.serve.options import _process_options
 from upstash_workflow.error import _format_workflow_error
 from upstash_workflow import AsyncWorkflowContext
-from upstash_workflow.types import _FinishCondition
+from upstash_workflow.types import _FinishCondition, Redact
 from upstash_workflow.asyncio.serve.authorization import _DisabledWorkflowContext
 
 _logger = logging.getLogger(__name__)
@@ -44,6 +44,7 @@ def _serve_base(
         Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
     ] = None,
     failure_url: Optional[str] = None,
+    redact: Optional[Redact] = None,
 ) -> Dict[str, Callable[[TRequest], Awaitable[TResponse]]]:
     processed_options = _process_options(
         qstash_client=qstash_client,
@@ -56,6 +57,7 @@ def _serve_base(
         url=url,
         failure_function=failure_function,
         failure_url=failure_url,
+        redact=redact,
     )
     qstash_client = processed_options.qstash_client
     on_step_finish = processed_options.on_step_finish
@@ -67,6 +69,7 @@ def _serve_base(
     url = processed_options.url
     failure_url = processed_options.failure_url
     failure_function = processed_options.failure_function
+    redact = processed_options.redact
 
     async def _handler(request: TRequest) -> TResponse:
         workflow_url, workflow_failure_url = _determine_urls(
@@ -119,6 +122,7 @@ def _serve_base(
             env=env,
             retries=retries,
             failure_url=workflow_failure_url,
+            redact=redact,
         )
 
         auth_check = await _DisabledWorkflowContext[Any].try_authentication(
@@ -146,7 +150,7 @@ def _serve_base(
 
         if call_return_check == "continue-workflow":
             if is_first_invocation:
-                await _trigger_first_invocation(workflow_context, retries)
+                await _trigger_first_invocation(workflow_context, retries, redact)
             else:
 
                 async def on_step() -> None:
@@ -188,6 +192,7 @@ def serve(
         Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
     ] = None,
     failure_url: Optional[str] = None,
+    redact: Optional[Redact] = None,
 ) -> Dict[str, Callable[[TRequest], Awaitable[TResponse]]]:
     """
     Creates a method that handles incoming requests and runs the provided
@@ -215,4 +220,5 @@ def serve(
         url=url,
         failure_function=failure_function,
         failure_url=failure_url,
+        redact=redact,
     )
