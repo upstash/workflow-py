@@ -2,6 +2,8 @@ import pytest
 from qstash import QStash
 from upstash_workflow import WorkflowContext
 from upstash_workflow.error import WorkflowAbort
+from upstash_workflow.types import Redact
+from upstash_workflow.workflow_requests import _trigger_first_invocation
 from tests.utils import (
     mock_qstash_server,
     RequestFields,
@@ -100,5 +102,39 @@ def test_workflow_headers(qstash_client: QStash) -> None:
                     },
                 }
             ],
+        ),
+    )
+
+
+def test_trigger_workflow_with_redact(qstash_client: QStash) -> None:
+    redact: Redact = {"body": True, "header": ["Authorization"]}
+
+    context = WorkflowContext(
+        qstash_client=qstash_client,
+        workflow_run_id="wfr-id",
+        headers={},
+        steps=[],
+        url=WORKFLOW_ENDPOINT,
+        initial_payload="my-payload",
+        env=None,
+        retries=3,
+        failure_url=None,
+        redact=redact,
+    )
+
+    def execute() -> None:
+        _trigger_first_invocation(context, retries=3, redact=redact)
+
+    mock_qstash_server(
+        execute=execute,
+        response_fields=ResponseFields(status=200, body="msgId"),
+        receives_request=RequestFields(
+            method="POST",
+            url=f"{MOCK_QSTASH_SERVER_URL}/v2/publish/{WORKFLOW_ENDPOINT}",
+            token="mock-token",
+            body="my-payload",
+            headers={
+                "Upstash-Redact-Fields": "body,header[Authorization]",
+            },
         ),
     )

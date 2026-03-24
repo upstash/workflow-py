@@ -51,8 +51,13 @@ async def mock_qstash_server(
                 text=f"assertion in mock QStash failed: {str(error)}", status=400
             )
 
+        if "/v2/batch" in str(request.url):
+            data = [{"messageId": response_fields.body, "deduplicated": False}]
+        else:
+            data = {"messageId": response_fields.body, "deduplicated": False}
+
         return web.json_response(
-            data=[{"messageId": response_fields.body, "deduplicated": False}],
+            data=data,
             status=response_fields.status,
         )
 

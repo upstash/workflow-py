@@ -108,9 +108,14 @@ def mock_qstash_server(
                 )
                 return
 
-            response_data = json.dumps(
-                [{"messageId": response_fields.body, "deduplicated": False}]
-            )
+            if "/v2/batch" in self.path:
+                response_data = json.dumps(
+                    [{"messageId": response_fields.body, "deduplicated": False}]
+                )
+            else:
+                response_data = json.dumps(
+                    {"messageId": response_fields.body, "deduplicated": False}
+                )
 
             self.send_response(response_fields.status)
             self.send_header("Content-type", "application/json")
