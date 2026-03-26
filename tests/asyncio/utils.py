@@ -51,6 +51,7 @@ async def mock_qstash_server(
                 text=f"assertion in mock QStash failed: {str(error)}", status=400
             )
 
+        data: Any
         if "/v2/batch" in str(request.url):
             data = [{"messageId": response_fields.body, "deduplicated": False}]
         else:
