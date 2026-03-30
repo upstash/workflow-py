@@ -16,7 +16,7 @@ from upstash_workflow.error import WorkflowError, WorkflowAbort
 from upstash_workflow.constants import (
     WORKFLOW_ID_HEADER,
 )
-from upstash_workflow.types import StepTypes
+from upstash_workflow.types import StepTypes, Redact
 from upstash_workflow.workflow_types import _AsyncRequest
 from upstash_workflow.workflow_requests import _get_headers, _recreate_user_headers
 
@@ -31,6 +31,7 @@ TInitialPayload = TypeVar("TInitialPayload")
 async def _trigger_first_invocation(
     workflow_context: AsyncWorkflowContext[TInitialPayload],
     retries: int,
+    redact: Optional[Redact] = None,
 ) -> None:
     headers = _get_headers(
         "true",
@@ -45,6 +46,7 @@ async def _trigger_first_invocation(
         url=workflow_context.url,
         body=workflow_context.request_payload,
         headers=headers,
+        redact=redact,
     )
 
 

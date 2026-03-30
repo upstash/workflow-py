@@ -11,6 +11,7 @@ from upstash_workflow.constants import (
 )
 from upstash_workflow.types import (
     _FinishCondition,
+    Redact,
 )
 from upstash_workflow import AsyncWorkflowContext
 
@@ -34,6 +35,7 @@ class ServeOptions(Generic[TInitialPayload, TResponse]):
         Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
     ]
     failure_url: Optional[str]
+    redact: Optional[Redact]
 
 
 @dataclass
@@ -57,6 +59,7 @@ def _process_options(
         Callable[[AsyncWorkflowContext, int, str, Dict[str, str]], Awaitable[Any]]
     ] = None,
     failure_url: Optional[str] = None,
+    redact: Optional[Redact] = None,
 ) -> ServeBaseOptions[TInitialPayload, TResponse]:
     environment = env if env is not None else dict(os.environ)
 
@@ -135,6 +138,7 @@ def _process_options(
         url=url,
         failure_url=failure_url,
         failure_function=failure_function,
+        redact=redact,
     )
 
 

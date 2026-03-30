@@ -25,7 +25,7 @@ from upstash_workflow.constants import (
     DEFAULT_CONTENT_TYPE,
     DEFAULT_RETRIES,
 )
-from upstash_workflow.types import StepTypes, DefaultStep, _HeadersResponse
+from upstash_workflow.types import StepTypes, DefaultStep, _HeadersResponse, Redact
 from upstash_workflow.workflow_types import _SyncRequest
 
 if TYPE_CHECKING:
@@ -39,6 +39,7 @@ TInitialPayload = TypeVar("TInitialPayload")
 def _trigger_first_invocation(
     workflow_context: WorkflowContext[TInitialPayload],
     retries: int,
+    redact: Optional[Redact] = None,
 ) -> None:
     headers = _get_headers(
         "true",
@@ -53,6 +54,7 @@ def _trigger_first_invocation(
         url=workflow_context.url,
         body=workflow_context.request_payload,
         headers=headers,
+        redact=redact,
     )
 
 

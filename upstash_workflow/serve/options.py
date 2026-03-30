@@ -23,6 +23,7 @@ from upstash_workflow.constants import (
 )
 from upstash_workflow.types import (
     _FinishCondition,
+    Redact,
 )
 from upstash_workflow import WorkflowContext
 from dataclasses import dataclass
@@ -46,6 +47,7 @@ class ServeOptions(Generic[TInitialPayload, TResponse]):
         Callable[[WorkflowContext[TInitialPayload], int, str, Dict[str, str]], Any]
     ]
     failure_url: Optional[str]
+    redact: Optional[Redact]
 
 
 @dataclass
@@ -69,6 +71,7 @@ def _process_options(
         Callable[[WorkflowContext, int, str, Dict[str, str]], Any]
     ] = None,
     failure_url: Optional[str] = None,
+    redact: Optional[Redact] = None,
 ) -> ServeBaseOptions[TInitialPayload, TResponse]:
     """
     Fills the options with default values if they are not provided.
@@ -160,6 +163,7 @@ def _process_options(
         url=url,
         failure_url=failure_url,
         failure_function=failure_function,
+        redact=redact,
     )
 
 

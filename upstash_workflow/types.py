@@ -100,3 +100,19 @@ class CallResponseDict(TypedDict):
     status: int
     body: Any
     header: Dict[str, List[str]]
+
+
+class Redact(TypedDict, total=False):
+    """
+    Configuration for redacting fields in logs.
+    """
+
+    body: Literal[True]
+    """Redact the request body in logs."""
+
+    header: Union[Literal[True], List[str]]
+    """
+    Redact headers in logs.
+    - `True` to redact all headers
+    - List of header names to redact specific headers (e.g., ["Authorization"])
+    """
