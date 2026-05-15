@@ -33,6 +33,37 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+
+def _inject_otel_context(headers: Dict[str, str]) -> None:
+    """Propagate the current OpenTelemetry context across the QStash boundary.
+
+    Each entry in the W3C trace context (``traceparent``, ``tracestate``) is
+    written as ``Upstash-Forward-<header>`` so QStash forwards it (stripped of
+    the prefix) to the workflow endpoint, where a standard HTTP instrumentor
+    can extract it as the parent context. Without this, every step delivery
+    arrives without a parent and starts a new root trace, so multi-step
+    workflows fragment into N separate disconnected traces in any tracing UI
+    (Tempo, Jaeger, Datadog, etc.).
+
+    Soft-imports ``opentelemetry``: when the package is not installed (the
+    common case for users not using OTel), this function is a no-op and the
+    library carries no runtime cost. Failures are also swallowed — a broken
+    OTel SDK must never break a workflow.
+    """
+    try:
+        from opentelemetry.propagate import inject  # type: ignore[import-not-found]
+    except ImportError:
+        return
+
+    try:
+        carrier: Dict[str, str] = {}
+        inject(carrier)
+        for key, value in carrier.items():
+            headers[f"Upstash-Forward-{key}"] = value
+    except Exception:
+        # Propagation is best-effort: never let a tracing concern break a workflow.
+        _logger.debug("OTel context injection failed", exc_info=True)
+
 TInitialPayload = TypeVar("TInitialPayload")
 
 
@@ -361,6 +392,12 @@ def _get_headers(
 
     content_type = user_headers.get("Content-Type") if user_headers else None
     content_type = DEFAULT_CONTENT_TYPE if content_type is None else content_type
+
+    # Propagate the current OTel trace context across the QStash boundary
+    # so multi-step workflows surface as one trace (rather than N disjoint
+    # root traces) in any tracing UI. No-op when OpenTelemetry is not
+    # installed; see ``_inject_otel_context`` for the rationale.
+    _inject_otel_context(base_headers)
 
     if step and step.call_headers is not None:
         forwarded_headers = {
