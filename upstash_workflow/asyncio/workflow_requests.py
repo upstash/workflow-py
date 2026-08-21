@@ -18,7 +18,11 @@ from upstash_workflow.constants import (
 )
 from upstash_workflow.types import StepTypes, Redact
 from upstash_workflow.workflow_types import _AsyncRequest
-from upstash_workflow.workflow_requests import _get_headers, _recreate_user_headers
+from upstash_workflow.workflow_requests import (
+    _get_headers,
+    _recreate_user_headers,
+    _get_first_invocation_batch_body,
+)
 
 if TYPE_CHECKING:
     from upstash_workflow import AsyncWorkflowContext
@@ -33,20 +37,20 @@ async def _trigger_first_invocation(
     retries: int,
     redact: Optional[Redact] = None,
 ) -> None:
-    headers = _get_headers(
-        "true",
+    batch_body = _get_first_invocation_batch_body(
         workflow_context.workflow_run_id,
         workflow_context.url,
         workflow_context.headers,
-        None,
+        workflow_context.request_payload,
         retries,
-    ).headers
+        redact,
+    )
 
-    await workflow_context.qstash_client.message.publish_json(
-        url=workflow_context.url,
-        body=workflow_context.request_payload,
-        headers=headers,
-        redact=redact,
+    await workflow_context.qstash_client.http.request(
+        path="/v2/batch",
+        method="POST",
+        headers={"Content-Type": "application/json"},
+        body=json.dumps(batch_body),
     )
 
 
@@ -193,10 +197,14 @@ async def _handle_third_party_call_result(
                 "concurrent": int(concurrent_str),
             }
 
-            await client.message.publish_json(
-                headers=request_headers,
-                body=call_result_step,
-                url=workflow_url,
+            # Not using `client.message.publish_json` because qstash-py (>=3)
+            # prefixes every header with `Upstash-Forward-`, corrupting the
+            # workflow control headers.
+            await client.http.request(
+                path=f"/v2/publish/{workflow_url}",
+                method="POST",
+                headers={"Content-Type": "application/json", **request_headers},
+                body=json.dumps(call_result_step),
             )
 
             return "is-call-return"
