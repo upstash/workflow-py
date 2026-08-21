@@ -1,4 +1,4 @@
-__version__ = "0.1.5"
+__version__ = "2.0.0"
 
 from upstash_workflow.context.context import WorkflowContext
 from upstash_workflow.serve.serve import serve
