@@ -9,7 +9,6 @@ from typing import (
     Awaitable,
     TypeVar,
     Any,
-    cast,
     Generic,
 )
 from qstash import AsyncQStash
@@ -165,14 +164,18 @@ class WorkflowContext(Generic[TInitialPayload]):
             )
         )
 
+        body = result["body"]
         try:
-            return CallResponse(
-                status=result["status"],
-                body=json.loads(result["body"]),
-                header=result["header"],
-            )
+            body = json.loads(body)
         except Exception:
-            return cast(CallResponse[Any], result)
+            # not a JSON body, return it as it is
+            pass
+
+        return CallResponse(
+            status=result["status"],
+            body=body,
+            header=result["header"],
+        )
 
     async def _add_step(self, step: _BaseLazyStep[TResult]) -> TResult:
         """

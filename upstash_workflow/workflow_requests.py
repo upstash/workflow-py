@@ -11,6 +11,8 @@ from typing import (
     cast,
     TypeVar,
     Dict,
+    List,
+    Any,
 )
 from qstash import QStash, Receiver
 from upstash_workflow.error import WorkflowError, WorkflowAbort
@@ -36,25 +38,121 @@ _logger = logging.getLogger(__name__)
 TInitialPayload = TypeVar("TInitialPayload")
 
 
+def _get_redact_headers(redact: Optional[Redact]) -> Dict[str, str]:
+    """
+    Converts the redact option into the `Upstash-Redact-Fields` header
+    understood by QStash.
+
+    :param redact: redact configuration
+    :return: headers to add to the request (empty if nothing to redact)
+    """
+    if redact is None:
+        return {}
+
+    redact_parts = []
+    if redact.get("body"):
+        redact_parts.append("body")
+
+    header_redact = redact.get("header")
+    if header_redact is True:
+        redact_parts.append("header")
+    elif isinstance(header_redact, list):
+        redact_parts.extend(f"header[{name}]" for name in header_redact)
+
+    if not redact_parts:
+        return {}
+    return {"Upstash-Redact-Fields": ",".join(redact_parts)}
+
+
+def _get_first_invocation_batch_body(
+    workflow_run_id: str,
+    workflow_url: str,
+    user_headers: Dict[str, str],
+    request_payload: Any,
+    retries: int,
+    redact: Optional[Redact] = None,
+    workflow_failure_url: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Builds the body of the `/v2/batch` request which starts a workflow run.
+
+    The workflow control headers (`Upstash-Workflow-Init`, `Upstash-Workflow-RunId`, ...)
+    are sent as-is inside the batch body. We don't use `qstash.message.publish_json`
+    because qstash-py (>=3) prefixes every header with `Upstash-Forward-`, which
+    would turn the control headers into plain forwarded headers and QStash would
+    never recognize the request as a workflow run start.
+
+    :param workflow_run_id: id of the workflow run
+    :param workflow_url: url of the workflow endpoint
+    :param user_headers: headers of the initial request
+    :param request_payload: initial payload. Sent as-is if it's a string, otherwise
+        serialized to JSON.
+    :param retries: number of retries
+    :param redact: fields to redact in QStash logs
+    :param workflow_failure_url: failure callback url, so that a failure of the
+        first step also triggers the failure function
+    :return: batch body with a single message
+    """
+    headers = _get_headers(
+        "true",
+        workflow_run_id,
+        workflow_url,
+        user_headers,
+        None,
+        retries,
+        workflow_failure_url=workflow_failure_url,
+    ).headers
+
+    # QStash doesn't forward content-type when passed in `upstash-forward-content-type`
+    # so we need to pass it in the headers
+    content_type = next(
+        (
+            value
+            for header, value in user_headers.items()
+            if header.lower() == "content-type"
+        ),
+        "application/json",
+    )
+
+    body = (
+        request_payload
+        if isinstance(request_payload, str)
+        else json.dumps(request_payload)
+    )
+
+    return [
+        {
+            "destination": workflow_url,
+            "headers": {
+                "Content-Type": content_type,
+                **headers,
+                **_get_redact_headers(redact),
+            },
+            "body": body,
+        }
+    ]
+
+
 def _trigger_first_invocation(
     workflow_context: WorkflowContext[TInitialPayload],
     retries: int,
     redact: Optional[Redact] = None,
 ) -> None:
-    headers = _get_headers(
-        "true",
+    batch_body = _get_first_invocation_batch_body(
         workflow_context.workflow_run_id,
         workflow_context.url,
         workflow_context.headers,
-        None,
+        workflow_context.request_payload,
         retries,
-    ).headers
+        redact,
+        workflow_context.failure_url,
+    )
 
-    workflow_context.qstash_client.message.publish_json(
-        url=workflow_context.url,
-        body=workflow_context.request_payload,
-        headers=headers,
-        redact=redact,
+    workflow_context.qstash_client.http.request(
+        path="/v2/batch",
+        method="POST",
+        headers={"Content-Type": "application/json"},
+        body=json.dumps(batch_body),
     )
 
 
@@ -232,10 +330,14 @@ def _handle_third_party_call_result(
                 "concurrent": int(concurrent_str),
             }
 
-            client.message.publish_json(
-                headers=request_headers,
-                body=call_result_step,
-                url=workflow_url,
+            # Not using `client.message.publish_json` because qstash-py (>=3)
+            # prefixes every header with `Upstash-Forward-`, corrupting the
+            # workflow control headers.
+            client.http.request(
+                path=f"/v2/publish/{workflow_url}",
+                method="POST",
+                headers={"Content-Type": "application/json", **request_headers},
+                body=json.dumps(call_result_step),
             )
 
             return "is-call-return"

@@ -132,11 +132,24 @@ async def test_trigger_workflow_with_redact(qstash_client: AsyncQStash) -> None:
         response_fields=ResponseFields(status=200, body="msgId"),
         receives_request=RequestFields(
             method="POST",
-            url=f"{MOCK_QSTASH_SERVER_URL}/v2/publish/{WORKFLOW_ENDPOINT}",
+            url=f"{MOCK_QSTASH_SERVER_URL}/v2/batch",
             token="mock-token",
-            body="my-payload",
-            headers={
-                "Upstash-Redact-Fields": "body,header[Authorization]",
-            },
+            body=[
+                {
+                    "destination": WORKFLOW_ENDPOINT,
+                    "headers": {
+                        "Content-Type": "application/json",
+                        # workflow control headers must reach QStash as-is,
+                        # not prefixed with `Upstash-Forward-`
+                        "Upstash-Workflow-Init": "true",
+                        "Upstash-Workflow-RunId": "wfr-id",
+                        "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
+                        "Upstash-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                        "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
+                        "Upstash-Redact-Fields": "body,header[Authorization]",
+                    },
+                    "body": "my-payload",
+                }
+            ],
         ),
     )
