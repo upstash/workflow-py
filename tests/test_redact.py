@@ -16,13 +16,17 @@ def _make_workflow_context() -> MagicMock:
     ctx.url = "https://example.com"
     ctx.headers = {}
     ctx.request_payload = '{"test": true}'
+    ctx.failure_url = None
     ctx.qstash_client.http.request = MagicMock()
     return ctx
 
 
-def _trigger(redact: Optional[Redact]) -> Dict[str, Any]:
+def _trigger(
+    redact: Optional[Redact], failure_url: Optional[str] = None
+) -> Dict[str, Any]:
     """Triggers the first invocation and returns the single batch message sent."""
     ctx = _make_workflow_context()
+    ctx.failure_url = failure_url
 
     _trigger_first_invocation(ctx, retries=3, redact=redact)
 
@@ -78,3 +82,21 @@ def test_trigger_sends_workflow_headers_unprefixed() -> None:
     assert headers["Upstash-Forward-Upstash-Workflow-Sdk-Version"] == "1"
     assert headers["Content-Type"] == "application/json"
     assert "Upstash-Forward-Upstash-Workflow-Init" not in headers
+
+
+def test_trigger_sends_failure_callback_when_failure_url_set() -> None:
+    """A failing first step must also reach the failure function (as in workflow-js)."""
+    message = _trigger(None, failure_url="https://example.com/failure")
+    headers = message["headers"]
+
+    assert headers["Upstash-Failure-Callback"] == "https://example.com/failure"
+    assert headers["Upstash-Failure-Callback-Workflow-Runid"] == "wfr-test-id"
+    assert (
+        headers["Upstash-Failure-Callback-Forward-Upstash-Workflow-Is-Failure"]
+        == "true"
+    )
+
+
+def test_trigger_sends_no_failure_callback_without_failure_url() -> None:
+    message = _trigger(None)
+    assert "Upstash-Failure-Callback" not in message["headers"]
