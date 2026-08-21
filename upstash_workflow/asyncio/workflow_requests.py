@@ -44,6 +44,7 @@ async def _trigger_first_invocation(
         workflow_context.request_payload,
         retries,
         redact,
+        workflow_context.failure_url,
     )
 
     await workflow_context.qstash_client.http.request(

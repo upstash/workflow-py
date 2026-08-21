@@ -71,6 +71,7 @@ def _get_first_invocation_batch_body(
     request_payload: Any,
     retries: int,
     redact: Optional[Redact] = None,
+    workflow_failure_url: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Builds the body of the `/v2/batch` request which starts a workflow run.
@@ -88,6 +89,8 @@ def _get_first_invocation_batch_body(
         serialized to JSON.
     :param retries: number of retries
     :param redact: fields to redact in QStash logs
+    :param workflow_failure_url: failure callback url, so that a failure of the
+        first step also triggers the failure function
     :return: batch body with a single message
     """
     headers = _get_headers(
@@ -97,6 +100,7 @@ def _get_first_invocation_batch_body(
         user_headers,
         None,
         retries,
+        workflow_failure_url=workflow_failure_url,
     ).headers
 
     # QStash doesn't forward content-type when passed in `upstash-forward-content-type`
@@ -141,6 +145,7 @@ def _trigger_first_invocation(
         workflow_context.request_payload,
         retries,
         redact,
+        workflow_context.failure_url,
     )
 
     workflow_context.qstash_client.http.request(
