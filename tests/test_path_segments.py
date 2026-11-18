@@ -41,7 +41,8 @@ def _context(run_id: str) -> WorkflowContext[None]:
 
 
 @pytest.mark.parametrize(
-    "value", ["wfr_abc-123.x~y", "user:1@example.com+a=b", "100%", "a b"]
+    "value",
+    ["wfr_abc-123.x~y", "user:1@example.com+a=b", "100%", "a b", "a\\b", "\\a\\"],
 )
 def test_path_segment_is_kept(value: str) -> None:
     assert _path_segment(value) == value
@@ -49,7 +50,7 @@ def test_path_segment_is_kept(value: str) -> None:
 
 @pytest.mark.parametrize(
     "value",
-    ["a/b", "a\\b", "a?b", "a#b", "a\tb", "a\nb", " a", "a ", "../../messages"],
+    ["a/b", "a?b", "a#b", "a\tb", "a\nb", " a", "a ", "../../messages"],
 )
 def test_path_segment_with_separators_is_rejected(value: str) -> None:
     with pytest.raises(WorkflowError, match="Workflow run id cannot contain"):
@@ -57,7 +58,22 @@ def test_path_segment_with_separators_is_rejected(value: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "value", [".", "..", "%2e", "%2E%2e", ".%2e", ".\t.", ".. ", " ..", "..\n"]
+    "value",
+    [
+        ".",
+        "..",
+        "%2e",
+        "%2E%2e",
+        ".%2e",
+        ".\t.",
+        ".. ",
+        " ..",
+        "..\n",
+        "..\\..\\messages",
+        "a\\..\\b",
+        "a\\.",
+        "%2e%2e\\a",
+    ],
 )
 def test_dot_path_segment_is_rejected(value: str) -> None:
     with pytest.raises(WorkflowError, match='cannot be "." or ".."'):
@@ -95,6 +111,7 @@ def test_delete_with_unusable_run_id_is_not_sent() -> None:
         "https://some-website.com",
         "http://localhost:8000/api/wf?x=../y#z",
         "https://some-website.com/.well-known/wf",
+        "https://some-website.com/wf?path=C:\\tmp\\..\\x#a\\b",
     ],
 )
 def test_workflow_url_is_kept(url: str) -> None:
@@ -111,6 +128,8 @@ def test_workflow_url_is_kept(url: str) -> None:
         "http://a#/wf",
         "http:///wf",
         "http://a\\..\\wf",
+        "http://a/b\\wf",
+        "http://a\\b/wf",
         "ftp://a/wf",
         "",
     ],
