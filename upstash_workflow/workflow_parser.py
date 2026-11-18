@@ -11,7 +11,7 @@ from typing import (
     TypeVar,
     cast,
 )
-from upstash_workflow.utils import _nanoid, _decode_base64
+from upstash_workflow.utils import _nanoid, _decode_base64, _path_segment
 from upstash_workflow.constants import (
     WORKFLOW_PROTOCOL_VERSION,
     WORKFLOW_PROTOCOL_VERSION_HEADER,
@@ -152,6 +152,8 @@ def _validate_request(
 
     if not workflow_run_id:
         raise WorkflowError("Couldn't get workflow id from header")
+
+    _path_segment(workflow_run_id, "Workflow run id")
 
     return _ValidateRequestResponse(
         is_first_invocation=is_first_invocation, workflow_run_id=workflow_run_id
