@@ -15,14 +15,19 @@ def _nanoid() -> str:
     return "".join([secrets.choice(NANOID_CHARS) for _ in range(NANOID_LENGTH)])
 
 
-_FORBIDDEN_IN_SEGMENT = re.compile(r"[/?#\x00-\x1f\x7f]")
-_IGNORED_IN_DOT_SEGMENT = re.compile(r"[\s\x00-\x1f\x7f]")
-_ENCODED_DOT = re.compile(r"%2e", re.IGNORECASE)
+_CONTROL = r"\x00-\x1f\x7f"
+_FORBIDDEN_IN_SEGMENT = re.compile(rf"[/?#{_CONTROL}]")
+# Scheme and host, then optionally a path and a query or fragment. A backslash
+# is only allowed in the query or fragment.
+_WORKFLOW_URL = re.compile(
+    rf"https?://[^/?#\\{_CONTROL}]+(?:(/[^?#\\{_CONTROL}]*)(?:[?#][^{_CONTROL}]*)?)?"
+)
 
 
 def _is_dot_segment(segment: str) -> bool:
-    normalized = _ENCODED_DOT.sub(".", _IGNORED_IN_DOT_SEGMENT.sub("", segment))
-    return normalized in (".", "..")
+    # whitespace is ignored and "%2e" counts as a dot
+    segment = re.sub(rf"[\s{_CONTROL}]", "", segment)
+    return segment.lower().replace("%2e", ".") in (".", "..")
 
 
 def _path_segment(value: str, name: str = "Id") -> str:
@@ -45,17 +50,9 @@ def _path_segment(value: str, name: str = "Id") -> str:
 
 def _destination_path(url: str) -> str:
     """Checks that a workflow url can be used as the destination of a publish request."""
-    match = (
-        re.match(r"^https?://([^/]*)([^?#]*)", url) if isinstance(url, str) else None
-    )
-    if (
-        not match
-        or not match.group(1)
-        or re.search(r"[?#]", match.group(1))
-        or re.search(r"[\x00-\x1f\x7f]", url)
-        # a backslash is only allowed in the query or fragment
-        or "\\" in match.group(0)
-        or any(_is_dot_segment(segment) for segment in match.group(2).split("/"))
+    match = _WORKFLOW_URL.fullmatch(url) if isinstance(url, str) else None
+    if not match or any(
+        _is_dot_segment(segment) for segment in (match.group(1) or "").split("/")
     ):
         raise WorkflowError("Workflow url is not usable as a destination.")
     return url
