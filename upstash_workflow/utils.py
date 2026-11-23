@@ -13,12 +13,14 @@ def _nanoid() -> str:
 
 
 def _decode_base64(base64_str: str) -> str:
+    normalized = base64_str.replace("-", "+").replace("_", "/")
+    padded = normalized + "=" * (-len(normalized) % 4)
     try:
-        decoded_bytes = base64.b64decode(base64_str)
+        decoded_bytes = base64.b64decode(padded)
         return decoded_bytes.decode("utf-8")
     except Exception as error:
         _logger.error(
             f"Upstash Qstash: Failed while decoding base64 '{base64_str}'."
             f" Falling back to standard base64 decoding. {error}"
         )
-        return base64.b64decode(base64_str).decode("ascii")
+        return base64.b64decode(padded).decode("ascii")
