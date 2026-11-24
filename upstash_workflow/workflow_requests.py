@@ -16,6 +16,7 @@ from typing import (
 )
 from qstash import QStash, Receiver
 from upstash_workflow.error import WorkflowError, WorkflowAbort
+from upstash_workflow.utils import _destination_path, _path_segment
 from upstash_workflow.constants import (
     WORKFLOW_INIT_HEADER,
     WORKFLOW_ID_HEADER,
@@ -176,7 +177,8 @@ def _trigger_workflow_delete(
     cancel: Optional[bool] = False,
 ) -> None:
     workflow_context.qstash_client.http.request(
-        path=f"/v2/workflows/runs/{workflow_context.workflow_run_id}?cancel={str(cancel).lower()}",
+        path=f"/v2/workflows/runs/{_path_segment(workflow_context.workflow_run_id, 'Workflow run id')}",
+        params={"cancel": str(cancel).lower()},
         method="DELETE",
         parse_response=False,
     )
@@ -334,7 +336,7 @@ def _handle_third_party_call_result(
             # prefixes every header with `Upstash-Forward-`, corrupting the
             # workflow control headers.
             client.http.request(
-                path=f"/v2/publish/{workflow_url}",
+                path=f"/v2/publish/{_destination_path(workflow_url)}",
                 method="POST",
                 headers={"Content-Type": "application/json", **request_headers},
                 body=json.dumps(call_result_step),
